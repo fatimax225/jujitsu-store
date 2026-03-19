@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Admin{% endblock %} | Jujita Gifts</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=Jost:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+</head>
+<body class="admin-body">
+
+<div class="admin-topbar">
+    <div class="admin-logo">Jujita <span>Admin</span></div>
+    <div style="display:flex;align-items:center;gap:20px;">
+        <a href="{{ url_for('index') }}" target="_blank" style="color:rgba(255,255,255,0.75);font-size:13px;display:flex;align-items:center;gap:6px;">
+            <i class="fas fa-external-link-alt"></i> View Store
+        </a>
+        <a href="{{ url_for('admin_logout') }}" style="color:rgba(255,255,255,0.75);font-size:13px;display:flex;align-items:center;gap:6px;">
+            <i class="fas fa-sign-out-alt"></i> Logout
+        </a>
+    </div>
+</div>
+
+<div class="admin-wrapper">
+    <div class="admin-sidebar">
+        <a href="{{ url_for('admin_dashboard') }}" class="{{ 'active' if request.endpoint == 'admin_dashboard' }}">
+            <i class="fas fa-tachometer-alt"></i> Dashboard
+        </a>
+        <a href="{{ url_for('admin_products') }}" class="{{ 'active' if 'product' in request.endpoint }}">
+            <i class="fas fa-box"></i> Products
+        </a>
+        <a href="{{ url_for('admin_orders') }}" class="{{ 'active' if 'order' in request.endpoint }}">
+            <i class="fas fa-shopping-cart"></i> Orders
+        </a>
+        <a href="{{ url_for('admin_users') }}" class="{{ 'active' if request.endpoint == 'admin_users' }}">
+            <i class="fas fa-users"></i> Customers
+        </a>
+        <a href="{{ url_for('admin_offers') }}" class="{{ 'active' if 'offer' in request.endpoint }}">
+            <i class="fas fa-tag"></i> Offers
+        </a>
+    </div>
+
+    <div class="admin-content">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+        {% for category, message in messages %}
+        <div class="flash flash-{{ category }}" style="position:relative;top:0;right:0;max-width:100%;margin-bottom:16px;border-radius:6px;">
+            <span>{{ message }}</span>
+            <button onclick="this.parentElement.remove()">×</button>
+        </div>
+        {% endfor %}
+        {% endif %}
+        {% endwith %}
+
+        {% block content %}{% endblock %}
+    </div>
+</div>
+
+<script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>

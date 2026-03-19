@@ -1,0 +1,138 @@
+{% extends "admin/base.html" %}
+{% block title %}{{ 'Edit' if action == 'edit' else 'Add' }} Product{% endblock %}
+{% block content %}
+
+<div style="display:flex;align-items:center;gap:16px;margin-bottom:28px;">
+    <a href="{{ url_for('admin_products') }}" style="color:var(--mid-gray);font-size:13px;">
+        <i class="fas fa-arrow-left"></i> Back to Products
+    </a>
+    <h1 class="admin-page-title" style="margin-bottom:0;">
+        {{ 'Edit Product' if action == 'edit' else 'Add New Product' }}
+    </h1>
+</div>
+
+<div style="display:grid;grid-template-columns:2fr 1fr;gap:24px;align-items:start;">
+    <div class="admin-card">
+        <form action="{{ url_for('admin_edit_product', product_id=product.id) if action == 'edit' else url_for('admin_add_product') }}"
+              method="POST" enctype="multipart/form-data">
+
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+                <div class="form-group">
+                    <label>Product Name (English) *</label>
+                    <input type="text" name="name" class="form-control" required
+                           value="{{ product.name if product else '' }}" placeholder="e.g. Rose Gift Box">
+                </div>
+                <div class="form-group">
+                    <label>اسم المنتج (عربي)</label>
+                    <input type="text" name="name_ar" class="form-control"
+                           value="{{ product.name_ar if product else '' }}" placeholder="مثال: صندوق الورد" dir="rtl"
+                           style="font-family:'Noto Naskh Arabic',serif;text-align:right;">
+                </div>
+            </div>
+
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;">
+                <div class="form-group">
+                    <label>Price (BD) *</label>
+                    <input type="number" name="price" class="form-control" step="0.001" required
+                           value="{{ product.price if product else '' }}" placeholder="0.000">
+                </div>
+                <div class="form-group">
+                    <label>Discount %</label>
+                    <input type="number" name="discount_percent" class="form-control" step="0.1" min="0" max="100"
+                           value="{{ product.discount_percent if product else '0' }}" placeholder="0">
+                </div>
+                <div class="form-group">
+                    <label>Stock</label>
+                    <input type="number" name="stock" class="form-control" min="0"
+                           value="{{ product.stock if product else '100' }}">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>Category *</label>
+                <select name="category" class="form-control" required>
+                    {% set cats = ['birthday', 'eid', 'ramadan', 'baby', 'special', 'wedding', 'graduation', 'corporate'] %}
+                    {% for cat in cats %}
+                    <option value="{{ cat }}" {{ 'selected' if product and product.category == cat }}>
+                        {{ cat|capitalize }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>Description (English)</label>
+                <textarea name="description" class="form-control" rows="3"
+                          placeholder="Describe the product...">{{ product.description if product else '' }}</textarea>
+            </div>
+
+            <div class="form-group">
+                <label>الوصف (عربي)</label>
+                <textarea name="description_ar" class="form-control" rows="3" dir="rtl"
+                          style="font-family:'Noto Naskh Arabic',serif;text-align:right;"
+                          placeholder="وصف المنتج بالعربية...">{{ product.description_ar if product else '' }}</textarea>
+            </div>
+
+            <div class="form-group">
+                <label>Customizable Options (comma-separated)</label>
+                <input type="text" name="customizable_options" class="form-control"
+                       value="{{ options if options else '' }}"
+                       placeholder="e.g. Red, Pink, White, Mixed">
+                <div style="font-size:11px;color:var(--mid-gray);margin-top:6px;">
+                    Separate options with commas. E.g.: Small, Medium, Large
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>Product Image</label>
+                <div style="border:2px dashed var(--border);border-radius:8px;padding:20px;text-align:center;cursor:pointer;transition:border-color 0.3s;"
+                     onclick="document.getElementById('product-image-input').click();">
+                    <input type="file" id="product-image-input" name="image" accept="image/*" style="display:none;">
+                    <img id="image-preview"
+                         src="{{ url_for('static', filename='images/uploads/' + product.image) if product and product.image and not product.image.startswith('default') else '' }}"
+                         style="max-width:200px;max-height:200px;margin:0 auto 12px;border-radius:6px;{{ 'display:block;' if product and product.image and not product.image.startswith('default') else 'display:none;' }}">
+                    <div style="color:var(--mid-gray);font-size:13px;">
+                        <i class="fas fa-cloud-upload-alt" style="font-size:24px;display:block;margin-bottom:8px;"></i>
+                        Click to upload image (PNG, JPG, WebP)
+                    </div>
+                </div>
+            </div>
+
+            <div style="display:flex;gap:12px;margin-top:8px;">
+                <button type="submit" class="btn btn-primary btn-lg">
+                    <i class="fas fa-save"></i>
+                    {{ 'Save Changes' if action == 'edit' else 'Add Product' }}
+                </button>
+                <a href="{{ url_for('admin_products') }}" class="btn btn-outline btn-lg">Cancel</a>
+            </div>
+        </form>
+    </div>
+
+    <!-- Tips Card -->
+    <div class="admin-card">
+        <div class="admin-card-title">💡 Tips</div>
+        <div style="font-size:13px;color:var(--mid-gray);line-height:1.9;">
+            <p><strong>Image:</strong> Use square images (1:1 ratio) for best results. Min 400×400px.</p>
+            <br>
+            <p><strong>Options:</strong> Add comma-separated choices like colors, sizes, or scents.</p>
+            <br>
+            <p><strong>Discount:</strong> Enter percentage (e.g., 10 for 10% off). Leave 0 for no discount.</p>
+            <br>
+            <p><strong>Arabic Name:</strong> Always add the Arabic name for bilingual support.</p>
+        </div>
+
+        {% if action == 'edit' and product %}
+        <div style="margin-top:24px;padding-top:20px;border-top:1px solid var(--border);">
+            <div style="font-size:12px;color:var(--mid-gray);margin-bottom:12px;">Danger Zone</div>
+            <form action="{{ url_for('admin_delete_product', product_id=product.id) }}" method="POST"
+                  onsubmit="return confirm('Permanently delete this product? This cannot be undone.');">
+                <button type="submit" class="btn btn-sm" style="background:#f8d7da;color:#721c24;border:1px solid #f5c6cb;width:100%;">
+                    <i class="fas fa-trash"></i> Delete This Product
+                </button>
+            </form>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+{% endblock %}

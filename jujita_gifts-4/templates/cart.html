@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+{% block title %}{{ 'سلة التسوق' if lang == 'ar' else 'Shopping Cart' }} | Jujita Shop{% endblock %}
+{% block content %}
+<div class="cart-section">
+    <div>
+        <h1 style="font-family:var(--font-display);font-size:36px;color:var(--burgundy);margin-bottom:28px;">
+            {{ 'سلة التسوق' if lang == 'ar' else 'Shopping Cart' }}
+            {% if cart_items %}
+            <span style="font-size:18px;color:var(--mid-gray);font-family:var(--font-body);">({{ cart_items|length }})</span>
+            {% endif %}
+        </h1>
+
+        {% if cart_items %}
+        <div class="cart-items-list">
+            {% for item in cart_items %}
+            <div class="cart-item">
+                <img class="cart-item-img"
+                     src="{{ url_for('static', filename='images/uploads/' + item.product.image) if item.product.image and not item.product.image.startswith('default') else url_for('static', filename='images/default_product.jpg') }}"
+                     alt="{{ item.product.name }}"
+                     onerror="this.src='https://via.placeholder.com/90x90/FAF7F2/C9868A?text=🎁'">
+                <div>
+                    <h3 class="cart-item-name">
+                        {{ item.product.name_ar if lang == 'ar' and item.product.name_ar else item.product.name }}
+                    </h3>
+                    {% if item.option %}
+                    <div class="cart-item-option">
+                        <i class="fas fa-tag"></i> {{ item.option }}
+                    </div>
+                    {% endif %}
+                    <div style="font-size:14px;color:var(--mid-gray);">
+                        {{ "%.3f"|format(item.price) }} BD {{ 'للوحدة' if lang == 'ar' else 'each' }}
+                    </div>
+                    <form action="{{ url_for('update_cart') }}" method="POST" class="cart-qty-form" style="margin-top:10px;">
+                        <input type="hidden" name="product_id" value="{{ item.product.id }}">
+                        <input type="number" name="quantity" class="cart-qty-input form-control"
+                               value="{{ item.quantity }}" min="1" max="99" style="width:60px;padding:6px;height:auto;">
+                        <button type="submit" class="btn btn-outline btn-sm">{{ 'تحديث' if lang == 'ar' else 'Update' }}</button>
+                    </form>
+                    <a href="{{ url_for('remove_from_cart', product_id=item.product.id) }}" class="cart-remove">
+                        <i class="fas fa-trash-alt"></i> {{ 'حذف' if lang == 'ar' else 'Remove' }}
+                    </a>
+                </div>
+                <div class="cart-item-price">
+                    {{ "%.3f"|format(item.subtotal) }} BD
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <div style="margin-top:20px;">
+            <a href="{{ url_for('products') }}" class="btn btn-outline">
+                <i class="fas fa-arrow-{{ 'right' if lang == 'ar' else 'left' }}"></i>
+                {{ 'متابعة التسوق' if lang == 'ar' else 'Continue Shopping' }}
+            </a>
+        </div>
+
+        {% else %}
+        <div style="text-align:center;padding:80px 20px;">
+            <div style="font-size:70px;margin-bottom:20px;">🛍️</div>
+            <h3 style="font-family:var(--font-display);font-size:28px;color:var(--charcoal);margin-bottom:12px;">
+                {{ 'السلة فارغة' if lang == 'ar' else 'Your Cart is Empty' }}
+            </h3>
+            <p style="color:var(--mid-gray);margin-bottom:28px;">
+                {{ 'اضف بعض الهدايا الجميلة إلى سلتك' if lang == 'ar' else 'Add some beautiful gifts to your cart' }}
+            </p>
+            <a href="{{ url_for('products') }}" class="btn btn-primary btn-lg">
+                {{ 'تسوّق الآن' if lang == 'ar' else 'Shop Now' }}
+            </a>
+        </div>
+        {% endif %}
+    </div>
+
+    {% if cart_items %}
+    <div class="cart-summary">
+        <h3>{{ 'ملخص الطلب' if lang == 'ar' else 'Order Summary' }}</h3>
+        {% for item in cart_items %}
+        <div class="summary-row">
+            <span>{{ item.product.name_ar if lang == 'ar' and item.product.name_ar else item.product.name }} × {{ item.quantity }}</span>
+            <span>{{ "%.3f"|format(item.subtotal) }} BD</span>
+        </div>
+        {% endfor %}
+        <div class="summary-row">
+            <span>{{ 'التوصيل' if lang == 'ar' else 'Delivery' }}</span>
+            <span style="color:#28a745;">{{ '1 BD' if lang == 'ar' else '1 BD' }}</span>
+        </div>
+        <div class="summary-total">
+            <span>{{ 'المجموع' if lang == 'ar' else 'Total' }}</span>
+            <span>{{ "%.3f"|format(total) }} BD</span>
+        </div>
+        <a href="{{ url_for('checkout') }}" class="btn btn-primary" style="width:100%;text-align:center;">
+            {{ 'إتمام الطلب' if lang == 'ar' else 'Proceed to Checkout' }}
+            <i class="fas fa-lock" style="font-size:11px;"></i>
+        </a>
+        <div style="text-align:center;margin-top:16px;font-size:12px;color:var(--mid-gray);">
+            <i class="fas fa-shield-alt" style="color:var(--gold);"></i>
+            {{ 'دفع آمن ومضمون' if lang == 'ar' else 'Secure & Safe Payment' }}
+        </div>
+        <div style="display:flex;justify-content:center;gap:12px;margin-top:14px;">
+            <img src="https://via.placeholder.com/40x24/f0f0f0/666?text=BEN" alt="BenefitPay" style="border-radius:4px;">
+            <img src="https://via.placeholder.com/40x24/f0f0f0/666?text=VISA" alt="Visa" style="border-radius:4px;">
+            <img src="https://via.placeholder.com/40x24/f0f0f0/666?text=MC" alt="Mastercard" style="border-radius:4px;">
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
