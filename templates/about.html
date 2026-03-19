@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}{{ 'عن جوجيتا' if lang == 'ar' else 'About Us' }} | Jujita Shop{% endblock %}
+{% block content %}
+<div class="page-hero">
+    <h1>{{ 'قصتنا' if lang == 'ar' else 'Our Story' }}</h1>
+    <p>{{ 'هدايا فاخرة مصنوعة بحب في قلب البحرين' if lang == 'ar' else 'Luxury gifts crafted with love in the heart of Bahrain' }}</p>
+</div>
+
+<div class="section" style="max-width:800px;">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:60px;align-items:center;margin-bottom:60px;">
+        <div>
+            <span style="color:var(--gold);font-size:11px;letter-spacing:3px;text-transform:uppercase;font-weight:600;">{{ 'من نحن' if lang == 'ar' else 'Who We Are' }}</span>
+            <h2 style="font-family:var(--font-display);font-size:36px;color:var(--burgundy);margin:12px 0 20px;line-height:1.2;">
+                {{ 'جوجيتا للهدايا الفاخرة' if lang == 'ar' else 'Jujita Luxury Gifts' }}
+            </h2>
+            <p style="color:var(--mid-gray);line-height:1.9;font-size:15px;">
+                {{ 'نحن متجر هدايا فاخر متخصص في البحرين، نقدم هدايا مميزة ومصنوعة بعناية فائقة لكل المناسبات الخاصة. نؤمن بأن كل هدية يجب أن تحمل معها مشاعر حقيقية وذكريات لا تُنسى.' if lang == 'ar' else 'We are a specialized luxury gift store in Bahrain, offering uniquely crafted gifts for every special occasion. We believe every gift should carry genuine feelings and unforgettable memories.' }}
+            </p>
+            <p style="color:var(--mid-gray);line-height:1.9;font-size:15px;margin-top:16px;">
+                {{ 'تأسسنا بشغف وحب للجمال والإبداع، ونسعى دائماً لتقديم أفضل تجربة تسوق للهدايا في المملكة.' if lang == 'ar' else 'Founded with a passion for beauty and creativity, we always strive to deliver the best gift shopping experience in the Kingdom.' }}
+            </p>
+        </div>
+        <div style="background:linear-gradient(135deg,var(--burgundy),var(--deep-rose));border-radius:12px;padding:40px;text-align:center;color:#fff;">
+            <div style="font-size:64px;margin-bottom:16px;">🎁</div>
+            <div style="font-family:var(--font-display);font-size:48px;font-weight:700;color:var(--gold-light);">500+</div>
+            <div style="font-size:14px;opacity:0.8;">{{ 'عميل سعيد' if lang == 'ar' else 'Happy Customers' }}</div>
+        </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:28px;">
+        {% set values = [
+            ('fas fa-heart', 'الحب والاهتمام' if lang == 'ar' else 'Love & Care', 'كل هدية تُصنع بحب حقيقي' if lang == 'ar' else 'Every gift made with genuine love'),
+            ('fas fa-gem', 'الجودة الفاخرة' if lang == 'ar' else 'Premium Quality', 'أرقى المواد وأجود الخامات' if lang == 'ar' else 'Finest materials and ingredients'),
+            ('fas fa-clock', 'التوصيل في الوقت' if lang == 'ar' else 'On-time Delivery', 'نضمن وصول هديتك في الموعد' if lang == 'ar' else 'We guarantee on-time arrival'),
+        ] %}
+        {% for icon, title, desc in values %}
+        <div style="text-align:center;padding:32px 20px;background:var(--warm-white);border:1px solid var(--border);border-radius:8px;">
+            <i class="{{ icon }}" style="font-size:28px;color:var(--gold);margin-bottom:14px;display:block;"></i>
+            <h3 style="font-family:var(--font-display);font-size:18px;color:var(--charcoal);margin-bottom:8px;">{{ title }}</h3>
+            <p style="font-size:13px;color:var(--mid-gray);">{{ desc }}</p>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

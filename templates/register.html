@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}{{ 'إنشاء حساب' if lang == 'ar' else 'Register' }} | Jujita Gifts{% endblock %}
+{% block content %}
+<div class="form-section" style="max-width:640px;">
+    <div class="form-card">
+        <h2 class="form-title">{{ 'إنشاء حساب جديد' if lang == 'ar' else 'Create Account' }}</h2>
+        <p class="form-subtitle">{{ 'انضم إلى عائلة جوجيتا للهدايا' if lang == 'ar' else 'Join the Jujita Gifts family' }}</p>
+
+        <form action="{{ url_for('register') }}" method="POST">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+                <div class="form-group" style="margin-bottom:0;">
+                    <label>{{ 'الاسم الكامل' if lang == 'ar' else 'Full Name' }} *</label>
+                    <input type="text" name="name" class="form-control" placeholder="{{ 'اسمك الكامل' if lang == 'ar' else 'Your full name' }}" required>
+                </div>
+                <div class="form-group" style="margin-bottom:0;">
+                    <label>{{ 'رقم الهاتف' if lang == 'ar' else 'Phone Number' }}</label>
+                    <input type="tel" name="phone" class="form-control" placeholder="+973 XXXX XXXX">
+                </div>
+            </div>
+            <div class="form-group" style="margin-top:16px;">
+                <label>{{ 'البريد الإلكتروني' if lang == 'ar' else 'Email Address' }} *</label>
+                <input type="email" name="email" class="form-control" placeholder="your@email.com" required>
+            </div>
+            <div class="form-group">
+                <label>{{ 'كلمة المرور' if lang == 'ar' else 'Password' }} *</label>
+                <input type="password" name="password" class="form-control" placeholder="••••••••" required minlength="6">
+            </div>
+            <div class="form-group">
+                <label>{{ 'العنوان' if lang == 'ar' else 'Delivery Address' }}</label>
+                <textarea name="address" class="form-control" rows="2" placeholder="{{ 'عنوانك للتوصيل...' if lang == 'ar' else 'Your delivery address...' }}"></textarea>
+            </div>
+            <button type="submit" class="btn btn-primary" style="width:100%;margin-top:8px;">
+                {{ 'إنشاء الحساب' if lang == 'ar' else 'Create Account' }}
+                <i class="fas fa-user-plus"></i>
+            </button>
+        </form>
+
+        <div style="text-align:center;margin-top:24px;font-size:13px;color:var(--mid-gray);">
+            {{ 'لديك حساب بالفعل؟' if lang == 'ar' else 'Already have an account?' }}
+            <a href="{{ url_for('login') }}" style="color:var(--burgundy);font-weight:600;">
+                {{ 'تسجيل الدخول' if lang == 'ar' else 'Sign In' }}
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}
