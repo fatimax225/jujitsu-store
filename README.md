@@ -22,14 +22,7 @@ python app.py
 http://localhost:5000
 ```
 
----
 
-## 🔑 Admin Access
-
-| URL | `/admin/login` |
-|-----|---------------|
-| Username | `jojo` |
-| Password | `2256` |
 
 ---
 
