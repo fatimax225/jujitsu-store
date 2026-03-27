@@ -1,12 +1,11 @@
-
 from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify
+import sqlite3
 import os
 import json
 from werkzeug.utils import secure_filename
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime
 import uuid
-import sqlite3
 
 app = Flask(__name__)
 app.secret_key = 'jujita_gifts_secret_2024'
@@ -24,12 +23,7 @@ def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 def get_db():
-    if os.getenv("RENDER"):  # إذا على Render
-        db_path = os.path.join('/data', 'database.db')
-    else:  # إذا على جهازك
-        db_path = 'database.db'
-
-    conn = sqlite3.connect(db_path)
+    conn = sqlite3.connect('database.db')
     conn.row_factory = sqlite3.Row
     return conn
 
@@ -166,15 +160,15 @@ def products():
 @app.route('/product/<int:product_id>')
 def product_detail(product_id):
     conn = get_db()
-    product = conn.execute('SELECT * FROM products WHERE id = %s', (product_id,)).fetchone()
+    product = conn.execute('SELECT * FROM products WHERE id = ?', (product_id,)).fetchone()
     if not product:
         flash('Product not found', 'error')
         return redirect(url_for('products'))
     reviews = conn.execute('''SELECT r.*, u.name as reviewer_name FROM reviews r 
                               JOIN users u ON r.user_id = u.id 
-                              WHERE r.product_id = %s ORDER BY r.created_at DESC''', (product_id,)).fetchall()
-    avg_rating = conn.execute('SELECT AVG(rating) FROM reviews WHERE product_id = %s', (product_id,)).fetchone()[0]
-    related = conn.execute('SELECT * FROM products WHERE category = %s AND id != %s LIMIT 4',
+                              WHERE r.product_id = ? ORDER BY r.created_at DESC''', (product_id,)).fetchall()
+    avg_rating = conn.execute('SELECT AVG(rating) FROM reviews WHERE product_id = ?', (product_id,)).fetchone()[0]
+    related = conn.execute('SELECT * FROM products WHERE category = ? AND id != ? LIMIT 4',
                            (product['category'], product_id)).fetchall()
     conn.close()
     options = json.loads(product['customizable_options']) if product['customizable_options'] else []
@@ -194,7 +188,7 @@ def register():
             flash('Please fill all required fields', 'error')
             return render_template('register.html')
         conn = get_db()
-        existing = conn.execute('SELECT id FROM users WHERE email = %s', (email,)).fetchone()
+        existing = conn.execute('SELECT id FROM users WHERE email = ?', (email,)).fetchone()
         if existing:
             flash('Email already registered', 'error')
             conn.close()
@@ -214,7 +208,7 @@ def login():
         email = request.form.get('email', '').strip()
         password = request.form.get('password', '')
         conn = get_db()
-        user = conn.execute('SELECT * FROM users WHERE email = %s', (email,)).fetchone()
+        user = conn.execute('SELECT * FROM users WHERE email = ?', (email,)).fetchone()
         conn.close()
         if user and check_password_hash(user['password'], password):
             session['user_id'] = user['id']
@@ -333,7 +327,7 @@ def checkout():
     user_data = {}
     if session.get('user_id'):
         conn = get_db()
-        user_data = conn.execute('SELECT * FROM users WHERE id = %s', (session['user_id'],)).fetchone()
+        user_data = conn.execute('SELECT * FROM users WHERE id = ?', (session['user_id'],)).fetchone()
         conn.close()
     # Calculate totals
     conn = get_db()
@@ -371,7 +365,7 @@ def upload_proof():
         filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
         file.save(filepath)
         conn = get_db()
-        conn.execute('UPDATE orders SET payment_proof = ?, status = ? WHERE order_number = %s',
+        conn.execute('UPDATE orders SET payment_proof = ?, status = ? WHERE order_number = ?',
                      (filename, 'payment_uploaded', order_number))
         conn.commit()
         conn.close()
@@ -554,7 +548,7 @@ def admin_orders():
 @admin_required
 def admin_order_detail(order_id):
     conn = get_db()
-    order = conn.execute('SELECT * FROM orders WHERE id = %s', (order_id,)).fetchone()
+    order = conn.execute('SELECT * FROM orders WHERE id = ?', (order_id,)).fetchone()
     conn.close()
     if not order:
         flash('Order not found', 'error')
@@ -567,7 +561,7 @@ def admin_order_detail(order_id):
 def admin_update_order_status(order_id):
     status = request.form.get('status')
     conn = get_db()
-    conn.execute('UPDATE orders SET status = ? WHERE id = %s', (status, order_id))
+    conn.execute('UPDATE orders SET status = ? WHERE id = ?', (status, order_id))
     conn.commit()
     conn.close()
     flash('Order status updated', 'success')
@@ -609,9 +603,9 @@ def admin_add_offer():
 @admin_required
 def admin_toggle_offer(offer_id):
     conn = get_db()
-    offer = conn.execute('SELECT active FROM offers WHERE id = %s', (offer_id,)).fetchone()
+    offer = conn.execute('SELECT active FROM offers WHERE id = ?', (offer_id,)).fetchone()
     new_status = 0 if offer['active'] else 1
-    conn.execute('UPDATE offers SET active = ? WHERE id = %s', (new_status, offer_id))
+    conn.execute('UPDATE offers SET active = ? WHERE id = ?', (new_status, offer_id))
     conn.commit()
     conn.close()
     return redirect(url_for('admin_offers'))
@@ -620,7 +614,7 @@ def admin_toggle_offer(offer_id):
 @admin_required
 def admin_delete_offer(offer_id):
     conn = get_db()
-    conn.execute('DELETE FROM offers WHERE id = %s', (offer_id,))
+    conn.execute('DELETE FROM offers WHERE id = ?', (offer_id,))
     conn.commit()
     conn.close()
     flash('Offer deleted', 'success')
@@ -629,4 +623,4 @@ def admin_delete_offer(offer_id):
 if __name__ == '__main__':
     os.makedirs(UPLOAD_FOLDER, exist_ok=True)
     init_db()
-    app.run(debug=True, use_reloader=True, port=5002)
+    app.run(debug=True, use_reloader=True, port=5001)
