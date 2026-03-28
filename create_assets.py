@@ -29,7 +29,7 @@ os.makedirs('static/images', exist_ok=True)
 
 # Create default product placeholder
 png_data = create_placeholder_png(400, 400, 242, 237, 232)
-with open('static/images/default_product.jpg', 'wb') as f:
+with open('static/images/default_product.png', 'wb') as f:
     f.write(png_data)
 
 print("Default image created.")
