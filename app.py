@@ -7,6 +7,7 @@ from functools import wraps
 from flask import (Flask, render_template, request, redirect,
                    url_for, session, flash, jsonify)
 from flask_sqlalchemy import SQLAlchemy
+from flask_migrate import Migrate
 from werkzeug.utils import secure_filename
 from werkzeug.security import generate_password_hash, check_password_hash
 from dotenv import load_dotenv
@@ -24,8 +25,9 @@ app.secret_key = os.environ.get('SECRET_KEY', 'jujita_gifts_secret_2024')
 # Render sets DATABASE_URL automatically for linked PostgreSQL services.
 # It may start with "postgres://" — SQLAlchemy requires "postgresql://".
 _db_url = os.environ.get('DATABASE_URL', '')
-if _db_url.startswith('postgres://'):
-    _db_url = _db_url.replace('postgres://', 'postgresql://', 1)
+_db_url = os.environ.get('DATABASE_URL')
+
+app.config['SQLALCHEMY_DATABASE_URI'] = _db_url
 if not _db_url:
     # Local fallback: SQLite  (never used on Render)
     _db_url = 'sqlite:///jujita_local.db'
@@ -48,7 +50,7 @@ ADMIN_USERNAME = os.environ.get('ADMIN_USERNAME', 'jojo')
 ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD', '2256')
 
 db      = SQLAlchemy(app)
-
+migrate = Migrate(app, db)
 
 
 # ══════════════════════════════════════════════════════════════════════
@@ -754,13 +756,12 @@ def admin_delete_offer(offer_id):
 #  Admin — Init DB  (run once after first Render deploy)
 # ══════════════════════════════════════════════════════════════════════
 @app.route('/admin/init-db')
-
+@admin_required
 def admin_init_db():
     """
     Safe to call multiple times — never drops existing data.
     Visit this URL once after your first deploy on Render.
     """
-    db.drop_all()
     db.create_all()
     seed_products()
     flash('✅ Database initialised and sample products seeded!', 'success')
@@ -773,9 +774,6 @@ def admin_init_db():
 if __name__ == '__main__':
     os.makedirs(UPLOAD_FOLDER, exist_ok=True)
     with app.app_context():
-        
         db.create_all()
         seed_products()
     app.run(debug=True, use_reloader=True, port=5007)
-
-
