@@ -767,7 +767,13 @@ def admin_init_db():
     flash('✅ Database initialised and sample products seeded!', 'success')
     return redirect(url_for('admin_dashboard'))
 
-
+@app.route('/show-products')
+def show_products():
+    products = Product.query.all()
+    result = ""
+    for p in products:
+        result += f"{p.name} - {p.image}<br>"
+    return result
 # ══════════════════════════════════════════════════════════════════════
 #  Entry Point
 # ══════════════════════════════════════════════════════════════════════
