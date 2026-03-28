@@ -774,6 +774,15 @@ def show_products():
     for p in products:
         result += f"{p.name} - {p.image}<br>"
     return result
+'''
+import cloudinary
+import cloudinary.uploader
+
+cloudinary.config(
+    cloud_name="dn5verarm",
+    api_key="516669919435842",
+    api_secret="LkrWtnrFm_YgX7iUooCCqC"
+)'''
 # ══════════════════════════════════════════════════════════════════════
 #  Entry Point
 # ══════════════════════════════════════════════════════════════════════
