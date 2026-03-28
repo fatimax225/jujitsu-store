@@ -259,7 +259,12 @@ def set_lang(lang):
 # ══════════════════════════════════════════════════════════════════════
 @app.route('/')
 def index():
-    return "SITE WORKING"
+    import sqlalchemy
+    featured   = Product.query.order_by(sqlalchemy.func.random()).limit(6).all()
+    categories = db.session.query(Product.category).distinct().all()
+    offers     = Offer.query.filter_by(active=True).all()
+    return render_template('index.html',
+                           featured=featured, categories=categories, offers=offers)
 
 
 @app.route('/products')
