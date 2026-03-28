@@ -7,7 +7,6 @@ from functools import wraps
 from flask import (Flask, render_template, request, redirect,
                    url_for, session, flash, jsonify)
 from flask_sqlalchemy import SQLAlchemy
-from flask_migrate import Migrate
 from werkzeug.utils import secure_filename
 from werkzeug.security import generate_password_hash, check_password_hash
 from dotenv import load_dotenv
@@ -49,7 +48,7 @@ ADMIN_USERNAME = os.environ.get('ADMIN_USERNAME', 'jojo')
 ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD', '2256')
 
 db      = SQLAlchemy(app)
-migrate = Migrate(app, db)
+
 
 
 # ══════════════════════════════════════════════════════════════════════
