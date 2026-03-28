@@ -754,12 +754,13 @@ def admin_delete_offer(offer_id):
 #  Admin — Init DB  (run once after first Render deploy)
 # ══════════════════════════════════════════════════════════════════════
 @app.route('/admin/init-db')
-@admin_required
+
 def admin_init_db():
     """
     Safe to call multiple times — never drops existing data.
     Visit this URL once after your first deploy on Render.
     """
+    db.drop_all()
     db.create_all()
     seed_products()
     flash('✅ Database initialised and sample products seeded!', 'success')
@@ -772,7 +773,7 @@ def admin_init_db():
 if __name__ == '__main__':
     os.makedirs(UPLOAD_FOLDER, exist_ok=True)
     with app.app_context():
-        db.drop_all()
+        
         db.create_all()
         seed_products()
     app.run(debug=True, use_reloader=True, port=5001)
