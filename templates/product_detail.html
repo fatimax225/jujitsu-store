@@ -6,14 +6,7 @@
     <!-- Gallery -->
     <div class="product-gallery">
         <div class="product-main-img">
-            <img src="{% if product.image and product.image.startswith('http') %}
-              {{ product.image }}
-          {% elif product.image and not product.image.startswith('default') %}
-              {{ url_for('static', filename='images/uploads/' + product.image) }}
-          {% else %}
-              {{ url_for('static', filename='images/default_product.jpg') }}
-          {% endif %}"                 alt="{{ product.name }}"
-                 onerror="this.src='https://via.placeholder.com/600x600/FAF7F2/C9868A?text=🎁'">
+            <img src="{% if product.image and product.image.startswith('http') %}{{ product.image }}{% elif product.image and not product.image.startswith('default') %}{{ url_for('static', filename='images/uploads/' + product.image) }}{% else %}{{ url_for('static', filename='images/default_product.png') }}{% endif %}" alt="{{ product.name }}" onerror="this.src='https://placehold.co/600x600/FAF7F2/C9868A?text=🎁'">
         </div>
     </div>
 
@@ -126,9 +119,7 @@
             {% set rprice = p.price * (1 - p.discount_percent / 100) %}
             <div class="product-card">
                 <div class="product-img-wrapper">
-                    <img src="{{ url_for('static', filename='images/uploads/' + p.image) if p.image and not p.image.startswith('default') else url_for('static', filename='images/default_product.jpg') }}"
-                         alt="{{ p.name }}"
-                         onerror="this.src='https://via.placeholder.com/400x400/FAF7F2/C9868A?text=🎁'">
+                    <img src="{% if p.image and p.image.startswith('http') %}{{ p.image }}{% elif p.image and not p.image.startswith('default') %}{{ url_for('static', filename='images/uploads/' + p.image) }}{% else %}{{ url_for('static', filename='images/default_product.png') }}{% endif %}" alt="{{ p.name }}" onerror="this.src='https://placehold.co/400x400/FAF7F2/C9868A?text=🎁'">
                     <div class="product-actions-overlay">
                         <a href="{{ url_for('product_detail', product_id=p.id) }}" class="btn btn-outline" style="background:rgba(255,255,255,0.9);color:var(--burgundy);">
                             {{ 'عرض' if lang == 'ar' else 'View' }}
@@ -178,7 +169,7 @@
             {% if review.comment %}
             <p class="review-comment">"{{ review.comment }}"</p>
             {% endif %}
-            <div class="review-date">{{ review.created_at[:10] }}</div>
+            <div class="review-date">{{ review.created_at.strftime("%Y-%m-%d") if review.created_at else "" }}</div>
         </div>
         {% endfor %}
     </div>
