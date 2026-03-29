@@ -6,8 +6,13 @@
     <!-- Gallery -->
     <div class="product-gallery">
         <div class="product-main-img">
-            <img src="{{ url_for('static', filename='images/uploads/' + product.image) if product.image and not product.image.startswith('default') else url_for('static', filename='images/default_product.jpg') }}"
-                 alt="{{ product.name }}"
+            <img src="{% if product.image and product.image.startswith('http') %}
+              {{ product.image }}
+          {% elif product.image and not product.image.startswith('default') %}
+              {{ url_for('static', filename='images/uploads/' + product.image) }}
+          {% else %}
+              {{ url_for('static', filename='images/default_product.jpg') }}
+          {% endif %}"                 alt="{{ product.name }}"
                  onerror="this.src='https://via.placeholder.com/600x600/FAF7F2/C9868A?text=🎁'">
         </div>
     </div>
