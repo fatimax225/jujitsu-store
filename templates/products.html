@@ -39,8 +39,13 @@
         {% set price = product.price * (1 - product.discount_percent / 100) %}
         <div class="product-card">
             <div class="product-img-wrapper">
-                <img src="{{ url_for('static', filename='images/uploads/' + product.image) if product.image and not product.image.startswith('default') else url_for('static', filename='images/default_product.jpg') }}"
-                     alt="{{ product.name }}"
+           <img src="{% if product.image and product.image.startswith('http') %}
+              {{ product.image }}
+          {% elif product.image and not product.image.startswith('default') %}
+              {{ url_for('static', filename='images/uploads/' + product.image) }}
+          {% else %}
+              {{ url_for('static', filename='images/default_product.jpg') }}
+          {% endif %}"                     alt="{{ product.name }}"
                      onerror="this.src='https://via.placeholder.com/400x400/FAF7F2/C9868A?text=🎁'">
                 {% if product.discount_percent > 0 %}
                 <span class="product-badge sale">-{{ product.discount_percent|int }}%</span>
