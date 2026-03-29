@@ -73,9 +73,9 @@
             {% for item in cart_items %}
             <div class="summary-row">
                 <span style="display:flex;align-items:center;gap:8px;">
-                    <img src="{{ url_for('static', filename='images/uploads/' + item.product.image) if item.product.image and not item.product.image.startswith('default') else url_for('static', filename='images/default_product.jpg') }}"
+                    <img src="{% if item.product.image and item.product.image.startswith('http') %}{{ item.product.image }}{% elif item.product.image and not item.product.image.startswith('default') %}{{ url_for('static', filename='images/uploads/' + item.product.image) }}{% else %}{{ url_for('static', filename='images/default_product.png') }}{% endif %}"
                          style="width:36px;height:36px;object-fit:cover;border-radius:4px;"
-                         onerror="this.src='https://via.placeholder.com/36x36/FAF7F2/C9868A?text=🎁'">
+                         onerror="this.src='https://placehold.co/36x36/FAF7F2/C9868A?text=🎁'">
                     <span>{{ item.product.name_ar if lang == 'ar' and item.product.name_ar else item.product.name }} × {{ item.quantity }}</span>
                 </span>
                 <span>{{ "%.3f"|format(item.subtotal) }} BD</span>
