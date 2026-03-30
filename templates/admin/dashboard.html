@@ -50,7 +50,7 @@
                 <td>{{ order.customer_phone }}</td>
                 <td><strong>{{ "%.3f"|format(order.total_amount) }} BD</strong></td>
                 <td><span class="status-badge status-{{ order.status }}">{{ order.status|replace('_',' ')|title }}</span></td>
-                <td style="color:var(--mid-gray);font-size:12px;">{{ order.created_at[:16] }}</td>
+                <td style="color:var(--mid-gray);font-size:12px;">{{ order.created_at.strftime('%Y-%m-%d %H:%M') if order.created_at else '' }}</td>
                 <td>
                     <a href="{{ url_for('admin_order_detail', order_id=order.id) }}" class="btn btn-outline btn-sm">
                         View
