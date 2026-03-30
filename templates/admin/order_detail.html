@@ -70,7 +70,7 @@
                 <i class="fas fa-receipt" style="color:var(--gold);margin-right:8px;"></i>
                 Payment Proof
             </div>
-            <img src="{{ url_for('static', filename='images/uploads/' + order.payment_proof) }}"
+            <img src="{% if order.payment_proof and order.payment_proof.startswith('http') %}{{ order.payment_proof }}{% else %}{{ url_for('static', filename='images/uploads/' + order.payment_proof) }}{% endif %}"
                  style="max-width:100%;max-height:400px;border-radius:8px;border:1px solid var(--border);"
                  alt="Payment Proof">
         </div>
@@ -99,7 +99,7 @@
                 </div>
                 <div style="display:flex;gap:10px;">
                     <span style="color:var(--mid-gray);width:60px;flex-shrink:0;">Date</span>
-                    <span>{{ order.created_at[:16] }}</span>
+                    <span>{{ order.created_at.strftime('%Y-%m-%d %H:%M') if order.created_at else '' }}</span>
                 </div>
             </div>
             <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border);">
