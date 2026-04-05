@@ -701,8 +701,8 @@ def admin_delete_product(product_id):
     db.session.commit()
     flash('Product deleted', 'success')
     return redirect(url_for('admin_products'))
- 
- 
+
+
 @app.route('/admin/products/toggle_hide/<int:product_id>', methods=['POST'])
 @admin_required
 def admin_toggle_hide(product_id):
@@ -809,14 +809,6 @@ def admin_init_db():
     """
     db.create_all()
     seed_products()
-    # Add is_hidden column if it doesn't exist yet (safe for existing DBs)
-    try:
-        db.session.execute(db.text(
-            'ALTER TABLE products ADD COLUMN IF NOT EXISTS is_hidden BOOLEAN DEFAULT FALSE'
-        ))
-        db.session.commit()
-    except Exception:
-        db.session.rollback()
     flash('✅ Database initialised and sample products seeded!', 'success')
     return redirect(url_for('admin_dashboard'))
  
@@ -831,9 +823,25 @@ def show_products():
 # ══════════════════════════════════════════════════════════════════════
 #  Entry Point
 # ══════════════════════════════════════════════════════════════════════
+def add_missing_columns():
+    """Add any new columns to existing DB tables — safe to run multiple times."""
+    try:
+        with db.engine.connect() as conn:
+            conn.execute(db.text(
+                'ALTER TABLE products ADD COLUMN IF NOT EXISTS is_hidden BOOLEAN DEFAULT FALSE'
+            ))
+            conn.commit()
+    except Exception as e:
+        print(f"[Migration] Note: {e}")
+
+
+# ── Run migrations + seed on every startup (Gunicorn & local) ────────
+with app.app_context():
+    db.create_all()          # creates tables that don't exist
+    add_missing_columns()    # adds columns that don't exist
+    seed_products()
+
+
 if __name__ == '__main__':
     os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-    with app.app_context():
-        db.create_all()
-        seed_products()
     app.run(debug=True, use_reloader=True, port=5008)
