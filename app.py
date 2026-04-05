@@ -109,6 +109,7 @@ class Product(db.Model):
     customizable_options = db.Column(db.Text)          # JSON string
     discount_percent     = db.Column(db.Float, default=0)
     stock                = db.Column(db.Integer, default=100)
+    is_hidden            = db.Column(db.Boolean,  default=False)
     created_at           = db.Column(db.DateTime, default=datetime.utcnow)
  
     reviews = db.relationship('Review', backref='product', lazy=True,
@@ -286,7 +287,7 @@ def set_lang(lang):
 @app.route('/')
 def index():
     import sqlalchemy
-    featured   = Product.query.order_by(sqlalchemy.func.random()).limit(6).all()
+    featured   = Product.query.filter_by(is_hidden=False).order_by(sqlalchemy.func.random()).limit(6).all()
     categories = db.session.query(Product.category).distinct().all()
     offers     = Offer.query.filter_by(active=True).all()
     return render_template('index.html',
@@ -297,7 +298,7 @@ def index():
 def products():
     category = request.args.get('category', '')
     search   = request.args.get('search', '')
-    q = Product.query
+    q = Product.query.filter_by(is_hidden=False)
     if category:
         q = q.filter_by(category=category)
     if search:
@@ -612,7 +613,11 @@ def admin_dashboard():
 @app.route('/admin/products')
 @admin_required
 def admin_products():
-    prods = Product.query.order_by(Product.created_at.desc()).all()
+    filter_by = request.args.get('filter', '')
+    if filter_by == 'hidden':
+        prods = Product.query.filter_by(is_hidden=True).order_by(Product.created_at.desc()).all()
+    else:
+        prods = Product.query.order_by(Product.created_at.desc()).all()
     return render_template('admin/products.html', products=prods)
  
  
@@ -695,6 +700,17 @@ def admin_delete_product(product_id):
     db.session.delete(product)
     db.session.commit()
     flash('Product deleted', 'success')
+    return redirect(url_for('admin_products'))
+ 
+ 
+@app.route('/admin/products/toggle_hide/<int:product_id>', methods=['POST'])
+@admin_required
+def admin_toggle_hide(product_id):
+    product = Product.query.get_or_404(product_id)
+    product.is_hidden = not product.is_hidden
+    db.session.commit()
+    status = 'Hidden 🙈' if product.is_hidden else 'Visible ✅'
+    flash(f'"{product.name}" is now {status}', 'success')
     return redirect(url_for('admin_products'))
  
  
@@ -793,6 +809,14 @@ def admin_init_db():
     """
     db.create_all()
     seed_products()
+    # Add is_hidden column if it doesn't exist yet (safe for existing DBs)
+    try:
+        db.session.execute(db.text(
+            'ALTER TABLE products ADD COLUMN IF NOT EXISTS is_hidden BOOLEAN DEFAULT FALSE'
+        ))
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
     flash('✅ Database initialised and sample products seeded!', 'success')
     return redirect(url_for('admin_dashboard'))
  
@@ -813,4 +837,3 @@ if __name__ == '__main__':
         db.create_all()
         seed_products()
     app.run(debug=True, use_reloader=True, port=5008)
- 
