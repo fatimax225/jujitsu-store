@@ -4,9 +4,24 @@
 
 <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:28px;flex-wrap:wrap;gap:16px;">
     <h1 class="admin-page-title" style="margin-bottom:0;">Products</h1>
-    <a href="{{ url_for('admin_add_product') }}" class="btn btn-primary">
-        <i class="fas fa-plus"></i> Add Product
-    </a>
+    <div style="display:flex;gap:10px;align-items:center;">
+        <!-- Filter tabs -->
+        <a href="{{ url_for('admin_products') }}"
+           style="padding:7px 16px;border-radius:20px;font-size:12px;font-weight:600;border:1.5px solid var(--border);
+                  background:{{ 'var(--burgundy)' if not request.args.get('filter') else 'var(--warm-white)' }};
+                  color:{{ '#fff' if not request.args.get('filter') else 'var(--charcoal)' }};text-decoration:none;">
+            All ({{ products|length }})
+        </a>
+        <a href="{{ url_for('admin_products') }}?filter=hidden"
+           style="padding:7px 16px;border-radius:20px;font-size:12px;font-weight:600;border:1.5px solid var(--border);
+                  background:{{ 'var(--burgundy)' if request.args.get('filter') == 'hidden' else 'var(--warm-white)' }};
+                  color:{{ '#fff' if request.args.get('filter') == 'hidden' else 'var(--charcoal)' }};text-decoration:none;">
+            <i class="fas fa-eye-slash"></i> Hidden
+        </a>
+        <a href="{{ url_for('admin_add_product') }}" class="btn btn-primary">
+            <i class="fas fa-plus"></i> Add Product
+        </a>
+    </div>
 </div>
 
 <div class="admin-card">
@@ -21,28 +36,26 @@
                 <th>Price</th>
                 <th>Discount</th>
                 <th>Stock</th>
+                <th>Visibility</th>
                 <th>Actions</th>
             </tr>
         </thead>
         <tbody>
             {% for product in products %}
-            <tr>
+            <tr style="{{ 'opacity:0.45;' if product.is_hidden else '' }}">
                 <td>
-                    <img src="
-{% if product.image %}
-    {% if product.image.startswith('http') %}
-        {{ product.image }}
-    {% else %}
-        {{ url_for('static', filename='images/uploads/' + product.image) }}
-    {% endif %}
-{% else %}
-    {{ url_for('static', filename='images/default_product.png') }}
-{% endif %}
-"
-style="width:50px;height:50px;object-fit:cover;border-radius:6px;border:1px solid var(--border);"
-onerror="this.src='https://placehold.co/50x50/FAF7F2/C9868A?text=🎁'">
+                    <img src="{% if product.image and product.image.startswith('http') %}{{ product.image }}{% elif product.image and not product.image.startswith('default') %}{{ url_for('static', filename='images/uploads/' + product.image) }}{% else %}{{ url_for('static', filename='images/default_product.png') }}{% endif %}"
+                         style="width:50px;height:50px;object-fit:cover;border-radius:6px;border:1px solid var(--border);"
+                         onerror="this.src='https://placehold.co/50x50/FAF7F2/C9868A?text=🎁'">
                 </td>
-                <td><strong>{{ product.name }}</strong></td>
+                <td>
+                    <strong>{{ product.name }}</strong>
+                    {% if product.is_hidden %}
+                    <span style="display:inline-block;margin-left:6px;background:#f8d7da;color:#721c24;font-size:9px;font-weight:700;padding:2px 7px;border-radius:10px;letter-spacing:0.5px;text-transform:uppercase;">
+                        HIDDEN
+                    </span>
+                    {% endif %}
+                </td>
                 <td style="font-family:'Noto Naskh Arabic',serif;direction:rtl;">{{ product.name_ar or '—' }}</td>
                 <td>
                     <span style="background:var(--light-gray);padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;letter-spacing:1px;text-transform:uppercase;">
@@ -56,6 +69,22 @@ onerror="this.src='https://placehold.co/50x50/FAF7F2/C9868A?text=🎁'">
                     {% else %}—{% endif %}
                 </td>
                 <td>{{ product.stock }}</td>
+
+                <!-- ── Visibility Toggle ── -->
+                <td>
+                    <form action="{{ url_for('admin_toggle_hide', product_id=product.id) }}" method="POST" style="display:inline;">
+                        <button type="submit"
+                                title="{{ 'Show product' if product.is_hidden else 'Hide product' }}"
+                                style="border:none;cursor:pointer;padding:5px 12px;border-radius:20px;font-size:12px;font-weight:600;
+                                       display:inline-flex;align-items:center;gap:5px;
+                                       background:{{ '#d4edda' if product.is_hidden else '#fff3cd' }};
+                                       color:{{ '#155724' if product.is_hidden else '#856404' }};">
+                            <i class="fas fa-{{ 'eye' if product.is_hidden else 'eye-slash' }}"></i>
+                            {{ 'Show' if product.is_hidden else 'Hide' }}
+                        </button>
+                    </form>
+                </td>
+
                 <td>
                     <div style="display:flex;gap:8px;">
                         <a href="{{ url_for('admin_edit_product', product_id=product.id) }}" class="btn btn-outline btn-sm">
