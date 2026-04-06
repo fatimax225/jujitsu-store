@@ -114,6 +114,9 @@ class Product(db.Model):
  
     reviews = db.relationship('Review', backref='product', lazy=True,
                               cascade='all, delete-orphan')
+    images  = db.relationship('ProductImage', backref='product', lazy=True,
+                              cascade='all, delete-orphan',
+                              order_by='ProductImage.sort_order')
  
     @property
     def options_list(self):
@@ -174,6 +177,15 @@ class Offer(db.Model):
     created_at       = db.Column(db.DateTime, default=datetime.utcnow)
  
  
+class ProductImage(db.Model):
+    __tablename__ = 'product_images'
+    id         = db.Column(db.Integer, primary_key=True)
+    product_id = db.Column(db.Integer, db.ForeignKey('products.id'), nullable=False)
+    url        = db.Column(db.String(500), nullable=False)   # Cloudinary URL
+    sort_order = db.Column(db.Integer, default=0)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+
 # ══════════════════════════════════════════════════════════════════════
 #  Seed Data  (runs only when products table is empty)
 # ══════════════════════════════════════════════════════════════════════
@@ -327,10 +339,12 @@ def product_detail(product_id):
                .filter(Product.category == product.category,
                        Product.id != product_id)
                .limit(4).all())
+    product_images = ProductImage.query.filter_by(product_id=product_id)                                        .order_by(ProductImage.sort_order).all()
     return render_template('product_detail.html',
                            product=product, reviews=reviews,
                            avg_rating=avg_rating, related=related,
-                           options=product.options_list)
+                           options=product.options_list,
+                           product_images=product_images)
  
  
 # ══════════════════════════════════════════════════════════════════════
@@ -714,6 +728,43 @@ def admin_toggle_hide(product_id):
     return redirect(url_for('admin_products'))
  
  
+@app.route('/admin/products/<int:product_id>/images', methods=['POST'])
+@admin_required
+def admin_upload_images(product_id):
+    """Upload additional gallery images for a product."""
+    product = Product.query.get_or_404(product_id)
+    files   = request.files.getlist('gallery_images')
+    uploaded = 0
+    for file in files:
+        if file and file.filename and allowed_file(file.filename):
+            url = upload_to_cloudinary(file, folder='jujita/gallery')
+            if url:
+                # Get current max sort_order
+                max_order = db.session.query(db.func.max(ProductImage.sort_order))                                      .filter_by(product_id=product_id).scalar() or 0
+                img = ProductImage(product_id=product_id, url=url,
+                                   sort_order=max_order + 1)
+                db.session.add(img)
+                uploaded += 1
+    db.session.commit()
+    if uploaded:
+        flash(f'✅ {uploaded} image(s) uploaded successfully!', 'success')
+    else:
+        flash('No valid images uploaded.', 'error')
+    return redirect(url_for('admin_edit_product', product_id=product_id))
+
+
+@app.route('/admin/products/images/delete/<int:image_id>', methods=['POST'])
+@admin_required
+def admin_delete_image(image_id):
+    """Delete a gallery image."""
+    img = ProductImage.query.get_or_404(image_id)
+    product_id = img.product_id
+    db.session.delete(img)
+    db.session.commit()
+    flash('Image deleted.', 'success')
+    return redirect(url_for('admin_edit_product', product_id=product_id))
+
+
 # ══════════════════════════════════════════════════════════════════════
 #  Admin — Orders
 # ══════════════════════════════════════════════════════════════════════
@@ -833,6 +884,8 @@ def add_missing_columns():
             conn.commit()
     except Exception as e:
         print(f"[Migration] Note: {e}")
+
+    # product_images table is created by db.create_all() above — no ALTER needed
 
 
 # ── Run migrations + seed on every startup (Gunicorn & local) ────────
