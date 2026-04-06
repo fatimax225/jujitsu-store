@@ -3,7 +3,7 @@ import json
 import uuid
 from datetime import datetime
 from functools import wraps
- 
+
 from flask import (Flask, render_template, request, redirect,
                    url_for, session, flash, jsonify)
 from flask_sqlalchemy import SQLAlchemy
@@ -13,19 +13,17 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from dotenv import load_dotenv
 import cloudinary
 import cloudinary.uploader
- 
+
 load_dotenv()
- 
+
 # ── Cloudinary Config ─────────────────────────────────────────────────
-# Credentials come from Render → Environment Variables (more secure)
-# Fallback values here match what was already in your code
 cloudinary.config(
     cloud_name = os.environ.get('CLOUDINARY_CLOUD_NAME', 'dn5verarm'),
     api_key    = os.environ.get('CLOUDINARY_API_KEY',    '516669919435842'),
     api_secret = os.environ.get('CLOUDINARY_API_SECRET', 'LkrWtnrFm_YgX7iUooCCqC'),
     secure     = True
 )
- 
+
 def upload_to_cloudinary(file_obj, folder='jujita'):
     """Upload file to Cloudinary; returns HTTPS URL or None on failure."""
     try:
@@ -39,46 +37,43 @@ def upload_to_cloudinary(file_obj, folder='jujita'):
     except Exception as e:
         print(f"[Cloudinary] Upload failed: {e}")
         return None
- 
+
 # ══════════════════════════════════════════════════════════════════════
 #  App & Config
 # ══════════════════════════════════════════════════════════════════════
 app = Flask(__name__)
 app.config['TEMPLATES_AUTO_RELOAD'] = True
 app.secret_key = os.environ.get('SECRET_KEY', 'jujita_gifts_secret_2024')
- 
+
 # ── Database URL ──────────────────────────────────────────────────────
-# Render sets DATABASE_URL automatically for linked PostgreSQL services.
-# It may start with "postgres://" — SQLAlchemy requires "postgresql://".
+# FIX: was fetched twice, fallback was set AFTER config — now corrected.
 _db_url = os.environ.get('DATABASE_URL', '')
-_db_url = os.environ.get('DATABASE_URL')
- 
-app.config['SQLALCHEMY_DATABASE_URI'] = _db_url
+if _db_url.startswith('postgres://'):
+    _db_url = _db_url.replace('postgres://', 'postgresql://', 1)
 if not _db_url:
-    # Local fallback: SQLite  (never used on Render)
     _db_url = 'sqlite:///jujita_local.db'
- 
-app.config['SQLALCHEMY_DATABASE_URI']      = _db_url
+
+app.config['SQLALCHEMY_DATABASE_URI']       = _db_url
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-app.config['SQLALCHEMY_ENGINE_OPTIONS']    = {
+app.config['SQLALCHEMY_ENGINE_OPTIONS']     = {
     'pool_pre_ping': True,
     'pool_recycle':  300,
 }
- 
+
 # ── Uploads ───────────────────────────────────────────────────────────
-UPLOAD_FOLDER     = 'static/images/uploads'
+UPLOAD_FOLDER      = 'static/images/uploads'
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
-app.config['UPLOAD_FOLDER']       = UPLOAD_FOLDER
-app.config['MAX_CONTENT_LENGTH']  = 16 * 1024 * 1024
- 
+app.config['UPLOAD_FOLDER']      = UPLOAD_FOLDER
+app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
+
 # ── Admin credentials (set in Render → Environment) ───────────────────
 ADMIN_USERNAME = os.environ.get('ADMIN_USERNAME', 'jojo')
 ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD', '2256')
- 
+
 db      = SQLAlchemy(app)
 migrate = Migrate(app, db)
- 
- 
+
+
 # ══════════════════════════════════════════════════════════════════════
 #  Models
 # ══════════════════════════════════════════════════════════════════════
@@ -91,11 +86,11 @@ class User(db.Model):
     phone      = db.Column(db.String(30))
     address    = db.Column(db.Text)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
- 
+
     orders  = db.relationship('Order',  backref='user', lazy=True)
     reviews = db.relationship('Review', backref='user', lazy=True)
- 
- 
+
+
 class Product(db.Model):
     __tablename__ = 'products'
     id                   = db.Column(db.Integer, primary_key=True)
@@ -111,25 +106,22 @@ class Product(db.Model):
     stock                = db.Column(db.Integer, default=100)
     is_hidden            = db.Column(db.Boolean,  default=False)
     created_at           = db.Column(db.DateTime, default=datetime.utcnow)
- 
+
     reviews = db.relationship('Review', backref='product', lazy=True,
                               cascade='all, delete-orphan')
-    images  = db.relationship('ProductImage', backref='product', lazy=True,
-                              cascade='all, delete-orphan',
-                              order_by='ProductImage.sort_order')
- 
+
     @property
     def options_list(self):
         try:
             return json.loads(self.customizable_options) if self.customizable_options else []
         except Exception:
             return []
- 
+
     @property
     def final_price(self):
         return self.price * (1 - self.discount_percent / 100)
- 
- 
+
+
 class Order(db.Model):
     __tablename__ = 'orders'
     id                = db.Column(db.Integer, primary_key=True)
@@ -145,15 +137,15 @@ class Order(db.Model):
     payment_confirmed = db.Column(db.Boolean,     default=False)
     notes             = db.Column(db.Text)
     created_at        = db.Column(db.DateTime,    default=datetime.utcnow)
- 
+
     @property
     def items_list(self):
         try:
             return json.loads(self.items)
         except Exception:
             return []
- 
- 
+
+
 class Review(db.Model):
     __tablename__ = 'reviews'
     id         = db.Column(db.Integer, primary_key=True)
@@ -163,8 +155,8 @@ class Review(db.Model):
     rating     = db.Column(db.Integer,     nullable=False)
     comment    = db.Column(db.Text)
     created_at = db.Column(db.DateTime,   default=datetime.utcnow)
- 
- 
+
+
 class Offer(db.Model):
     __tablename__ = 'offers'
     id               = db.Column(db.Integer, primary_key=True)
@@ -175,15 +167,6 @@ class Offer(db.Model):
     category         = db.Column(db.String(80))
     active           = db.Column(db.Boolean, default=True)
     created_at       = db.Column(db.DateTime, default=datetime.utcnow)
- 
- 
-class ProductImage(db.Model):
-    __tablename__ = 'product_images'
-    id         = db.Column(db.Integer, primary_key=True)
-    product_id = db.Column(db.Integer, db.ForeignKey('products.id'), nullable=False)
-    url        = db.Column(db.String(500), nullable=False)   # Cloudinary URL
-    sort_order = db.Column(db.Integer, default=0)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
 
 # ══════════════════════════════════════════════════════════════════════
@@ -238,16 +221,16 @@ def seed_products():
     ]
     db.session.add_all(samples)
     db.session.commit()
- 
- 
+
+
 # ══════════════════════════════════════════════════════════════════════
 #  Helpers
 # ══════════════════════════════════════════════════════════════════════
 def allowed_file(filename):
     return '.' in filename and \
            filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
- 
- 
+
+
 def admin_required(f):
     @wraps(f)
     def decorated(*args, **kwargs):
@@ -255,16 +238,16 @@ def admin_required(f):
             return redirect(url_for('admin_login'))
         return f(*args, **kwargs)
     return decorated
- 
- 
+
+
 @app.context_processor
 def inject_cart_count():
     cart  = session.get('cart', {})
     count = sum(item.get('quantity', 1) for item in cart.values())
     lang  = session.get('lang', 'en')
     return dict(cart_count=count, lang=lang)
- 
- 
+
+
 def _build_cart(cart_session):
     """Return (cart_items list, total float) from session dict."""
     if not cart_session:
@@ -282,8 +265,8 @@ def _build_cart(cart_session):
                       'option':  cart_session[pid].get('option', ''),
                       'subtotal': subtotal, 'price': price})
     return items, total
- 
- 
+
+
 # ══════════════════════════════════════════════════════════════════════
 #  Language
 # ══════════════════════════════════════════════════════════════════════
@@ -291,8 +274,8 @@ def _build_cart(cart_session):
 def set_lang(lang):
     session['lang'] = lang if lang in ['en', 'ar'] else 'en'
     return redirect(request.referrer or url_for('index'))
- 
- 
+
+
 # ══════════════════════════════════════════════════════════════════════
 #  Main Routes
 # ══════════════════════════════════════════════════════════════════════
@@ -304,8 +287,8 @@ def index():
     offers     = Offer.query.filter_by(active=True).all()
     return render_template('index.html',
                            featured=featured, categories=categories, offers=offers)
- 
- 
+
+
 @app.route('/products')
 def products():
     category = request.args.get('category', '')
@@ -325,8 +308,8 @@ def products():
     return render_template('products.html', products=prods,
                            categories=categories,
                            selected_category=category, search=search)
- 
- 
+
+
 @app.route('/product/<int:product_id>')
 def product_detail(product_id):
     product = Product.query.get_or_404(product_id)
@@ -339,14 +322,12 @@ def product_detail(product_id):
                .filter(Product.category == product.category,
                        Product.id != product_id)
                .limit(4).all())
-    product_images = ProductImage.query.filter_by(product_id=product_id)                                        .order_by(ProductImage.sort_order).all()
     return render_template('product_detail.html',
                            product=product, reviews=reviews,
                            avg_rating=avg_rating, related=related,
-                           options=product.options_list,
-                           product_images=product_images)
- 
- 
+                           options=product.options_list)
+
+
 # ══════════════════════════════════════════════════════════════════════
 #  Auth Routes
 # ══════════════════════════════════════════════════════════════════════
@@ -372,8 +353,8 @@ def register():
         flash('Registration successful! Please login.', 'success')
         return redirect(url_for('login'))
     return render_template('register.html')
- 
- 
+
+
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
@@ -387,16 +368,16 @@ def login():
             return redirect(url_for('index'))
         flash('Invalid email or password', 'error')
     return render_template('login.html')
- 
- 
+
+
 @app.route('/logout')
 def logout():
     session.pop('user_id',   None)
     session.pop('user_name', None)
     flash('Logged out successfully', 'success')
     return redirect(url_for('index'))
- 
- 
+
+
 # ══════════════════════════════════════════════════════════════════════
 #  Cart Routes
 # ══════════════════════════════════════════════════════════════════════
@@ -404,8 +385,8 @@ def logout():
 def cart():
     cart_items, total = _build_cart(session.get('cart', {}))
     return render_template('cart.html', cart_items=cart_items, total=total)
- 
- 
+
+
 @app.route('/cart/add', methods=['POST'])
 def add_to_cart():
     pid    = str(request.form.get('product_id'))
@@ -419,48 +400,48 @@ def add_to_cart():
     session['cart'] = cart
     flash('Item added to cart!', 'success')
     return redirect(request.referrer or url_for('products'))
- 
- 
+
+
 @app.route('/cart/update', methods=['POST'])
 def update_cart():
-    pid  = str(request.form.get('product_id'))
-    qty  = int(request.form.get('quantity', 1))
+    pid = str(request.form.get('product_id'))
+    qty = int(request.form.get('quantity', 1))
     cart = session.get('cart', {})
-    if pid in cart:
-        if qty <= 0:
-            del cart[pid]
-        else:
-            cart[pid]['quantity'] = qty
+    if qty <= 0:
+        cart.pop(pid, None)
+    elif pid in cart:
+        cart[pid]['quantity'] = qty
     session['cart'] = cart
     return redirect(url_for('cart'))
- 
- 
-@app.route('/cart/remove/<product_id>')
+
+
+@app.route('/cart/remove/<int:product_id>')
 def remove_from_cart(product_id):
     cart = session.get('cart', {})
     cart.pop(str(product_id), None)
     session['cart'] = cart
     return redirect(url_for('cart'))
- 
- 
+
+
 # ══════════════════════════════════════════════════════════════════════
-#  Checkout & Orders
+#  Checkout / Orders
 # ══════════════════════════════════════════════════════════════════════
 @app.route('/checkout', methods=['GET', 'POST'])
 def checkout():
     cart_session = session.get('cart', {})
     if not cart_session:
+        flash('Your cart is empty', 'error')
         return redirect(url_for('cart'))
- 
+
     if request.method == 'POST':
         name    = request.form.get('name', '').strip()
         phone   = request.form.get('phone', '').strip()
         address = request.form.get('address', '').strip()
-        notes   = request.form.get('notes', '')
+        notes   = request.form.get('notes', '').strip()
         if not all([name, phone, address]):
             flash('Please fill all required fields', 'error')
             return redirect(url_for('checkout'))
- 
+
         cart_items, total = _build_cart(cart_session)
         items_data = [
             {'id': ci['product'].id, 'name': ci['product'].name,
@@ -468,7 +449,7 @@ def checkout():
              'option': ci['option'], 'subtotal': ci['subtotal']}
             for ci in cart_items
         ]
- 
+
         order = Order(
             order_number     = 'JG-' + str(uuid.uuid4())[:8].upper(),
             user_id          = session.get('user_id'),
@@ -481,7 +462,7 @@ def checkout():
         )
         db.session.add(order)
         db.session.commit()
- 
+
         session['cart'] = {}
         session['last_order'] = {
             'order_number': order.order_number,
@@ -491,7 +472,7 @@ def checkout():
             'items':  items_data,
         }
         return redirect(url_for('order_confirmation'))
- 
+
     user_data = None
     if session.get('user_id'):
         user_data = User.query.get(session['user_id'])
@@ -499,8 +480,8 @@ def checkout():
     return render_template('checkout.html',
                            cart_items=cart_items, total=total,
                            user_data=user_data)
- 
- 
+
+
 @app.route('/order/confirmation')
 def order_confirmation():
     order = session.get('last_order')
@@ -509,8 +490,8 @@ def order_confirmation():
     if isinstance(order.get('items'), str):
         order['items'] = json.loads(order['items'])
     return render_template('order_confirmation.html', order=order)
- 
- 
+
+
 @app.route('/order/upload_proof', methods=['POST'])
 def upload_proof():
     order_number = request.form.get('order_number')
@@ -530,8 +511,8 @@ def upload_proof():
         else:
             flash('Upload failed. Please try again.', 'error')
     return redirect(url_for('index'))
- 
- 
+
+
 # ══════════════════════════════════════════════════════════════════════
 #  Reviews
 # ══════════════════════════════════════════════════════════════════════
@@ -557,26 +538,26 @@ def add_review():
         db.session.commit()
         flash('Review submitted!', 'success')
     return redirect(url_for('product_detail', product_id=pid))
- 
- 
+
+
 # ══════════════════════════════════════════════════════════════════════
 #  Static Pages
 # ══════════════════════════════════════════════════════════════════════
 @app.route('/about')
 def about():
     return render_template('about.html')
- 
- 
+
+
 @app.route('/contact')
 def contact():
     return render_template('contact.html')
- 
- 
+
+
 @app.route('/scoop')
 def scoop():
     return render_template('scoop.html')
- 
- 
+
+
 # ══════════════════════════════════════════════════════════════════════
 #  Admin — Login / Logout
 # ══════════════════════════════════════════════════════════════════════
@@ -593,14 +574,14 @@ def admin_login():
             return redirect(url_for('admin_dashboard'))
         flash('Invalid credentials', 'error')
     return render_template('admin/login.html')
- 
- 
+
+
 @app.route('/admin/logout')
 def admin_logout():
     session.pop('admin', None)
     return redirect(url_for('admin_login'))
- 
- 
+
+
 # ══════════════════════════════════════════════════════════════════════
 #  Admin — Dashboard
 # ══════════════════════════════════════════════════════════════════════
@@ -619,8 +600,8 @@ def admin_dashboard():
                            total_users=total_users,
                            total_revenue=total_revenue,
                            recent_orders=recent_orders)
- 
- 
+
+
 # ══════════════════════════════════════════════════════════════════════
 #  Admin — Products
 # ══════════════════════════════════════════════════════════════════════
@@ -633,8 +614,8 @@ def admin_products():
     else:
         prods = Product.query.order_by(Product.created_at.desc()).all()
     return render_template('admin/products.html', products=prods)
- 
- 
+
+
 @app.route('/admin/products/add', methods=['GET', 'POST'])
 @admin_required
 def admin_add_product():
@@ -648,10 +629,10 @@ def admin_add_product():
                     image_filename = url
                 else:
                     flash('Image upload failed, using default.', 'error')
- 
+
         options_raw = request.form.get('customizable_options', '')
         options     = json.dumps([o.strip() for o in options_raw.split(',') if o.strip()])
- 
+
         product = Product(
             name                 = request.form.get('name'),
             name_ar              = request.form.get('name_ar', ''),
@@ -670,8 +651,8 @@ def admin_add_product():
         return redirect(url_for('admin_products'))
     return render_template('admin/product_form.html', product=None,
                            options='', action='add')
- 
- 
+
+
 @app.route('/admin/products/edit/<int:product_id>', methods=['GET', 'POST'])
 @admin_required
 def admin_edit_product(product_id):
@@ -685,7 +666,7 @@ def admin_edit_product(product_id):
                     product.image = url
                 else:
                     flash('Image upload failed, keeping existing image.', 'error')
- 
+
         options_raw              = request.form.get('customizable_options', '')
         product.name             = request.form.get('name')
         product.name_ar          = request.form.get('name_ar', '')
@@ -700,13 +681,13 @@ def admin_edit_product(product_id):
         db.session.commit()
         flash('Product updated!', 'success')
         return redirect(url_for('admin_products'))
- 
+
     return render_template('admin/product_form.html',
                            product=product,
                            options=', '.join(product.options_list),
                            action='edit')
- 
- 
+
+
 @app.route('/admin/products/delete/<int:product_id>', methods=['POST'])
 @admin_required
 def admin_delete_product(product_id):
@@ -726,43 +707,6 @@ def admin_toggle_hide(product_id):
     status = 'Hidden 🙈' if product.is_hidden else 'Visible ✅'
     flash(f'"{product.name}" is now {status}', 'success')
     return redirect(url_for('admin_products'))
- 
- 
-@app.route('/admin/products/<int:product_id>/images', methods=['POST'])
-@admin_required
-def admin_upload_images(product_id):
-    """Upload additional gallery images for a product."""
-    product = Product.query.get_or_404(product_id)
-    files   = request.files.getlist('gallery_images')
-    uploaded = 0
-    for file in files:
-        if file and file.filename and allowed_file(file.filename):
-            url = upload_to_cloudinary(file, folder='jujita/gallery')
-            if url:
-                # Get current max sort_order
-                max_order = db.session.query(db.func.max(ProductImage.sort_order))                                      .filter_by(product_id=product_id).scalar() or 0
-                img = ProductImage(product_id=product_id, url=url,
-                                   sort_order=max_order + 1)
-                db.session.add(img)
-                uploaded += 1
-    db.session.commit()
-    if uploaded:
-        flash(f'✅ {uploaded} image(s) uploaded successfully!', 'success')
-    else:
-        flash('No valid images uploaded.', 'error')
-    return redirect(url_for('admin_edit_product', product_id=product_id))
-
-
-@app.route('/admin/products/images/delete/<int:image_id>', methods=['POST'])
-@admin_required
-def admin_delete_image(image_id):
-    """Delete a gallery image."""
-    img = ProductImage.query.get_or_404(image_id)
-    product_id = img.product_id
-    db.session.delete(img)
-    db.session.commit()
-    flash('Image deleted.', 'success')
-    return redirect(url_for('admin_edit_product', product_id=product_id))
 
 
 # ══════════════════════════════════════════════════════════════════════
@@ -773,16 +717,16 @@ def admin_delete_image(image_id):
 def admin_orders():
     orders = Order.query.order_by(Order.created_at.desc()).all()
     return render_template('admin/orders.html', orders=orders)
- 
- 
+
+
 @app.route('/admin/orders/<int:order_id>')
 @admin_required
 def admin_order_detail(order_id):
     order = Order.query.get_or_404(order_id)
     return render_template('admin/order_detail.html',
                            order=order, items=order.items_list)
- 
- 
+
+
 @app.route('/admin/orders/update_status/<int:order_id>', methods=['POST'])
 @admin_required
 def admin_update_order_status(order_id):
@@ -791,8 +735,8 @@ def admin_update_order_status(order_id):
     db.session.commit()
     flash('Order status updated', 'success')
     return redirect(url_for('admin_order_detail', order_id=order_id))
- 
- 
+
+
 # ══════════════════════════════════════════════════════════════════════
 #  Admin — Users
 # ══════════════════════════════════════════════════════════════════════
@@ -801,8 +745,8 @@ def admin_update_order_status(order_id):
 def admin_users():
     users = User.query.order_by(User.created_at.desc()).all()
     return render_template('admin/users.html', users=users)
- 
- 
+
+
 # ══════════════════════════════════════════════════════════════════════
 #  Admin — Offers
 # ══════════════════════════════════════════════════════════════════════
@@ -811,8 +755,8 @@ def admin_users():
 def admin_offers():
     offers = Offer.query.order_by(Offer.created_at.desc()).all()
     return render_template('admin/offers.html', offers=offers)
- 
- 
+
+
 @app.route('/admin/offers/add', methods=['POST'])
 @admin_required
 def admin_add_offer():
@@ -827,8 +771,8 @@ def admin_add_offer():
     db.session.commit()
     flash('Offer added!', 'success')
     return redirect(url_for('admin_offers'))
- 
- 
+
+
 @app.route('/admin/offers/toggle/<int:offer_id>')
 @admin_required
 def admin_toggle_offer(offer_id):
@@ -836,8 +780,8 @@ def admin_toggle_offer(offer_id):
     offer.active = not offer.active
     db.session.commit()
     return redirect(url_for('admin_offers'))
- 
- 
+
+
 @app.route('/admin/offers/delete/<int:offer_id>', methods=['POST'])
 @admin_required
 def admin_delete_offer(offer_id):
@@ -846,23 +790,20 @@ def admin_delete_offer(offer_id):
     db.session.commit()
     flash('Offer deleted', 'success')
     return redirect(url_for('admin_offers'))
- 
- 
+
+
 # ══════════════════════════════════════════════════════════════════════
 #  Admin — Init DB  (run once after first Render deploy)
 # ══════════════════════════════════════════════════════════════════════
 @app.route('/admin/init-db')
 @admin_required
 def admin_init_db():
-    """
-    Safe to call multiple times — never drops existing data.
-    Visit this URL once after your first deploy on Render.
-    """
     db.create_all()
     seed_products()
     flash('✅ Database initialised and sample products seeded!', 'success')
     return redirect(url_for('admin_dashboard'))
- 
+
+
 @app.route('/show-products')
 def show_products():
     products = Product.query.all()
@@ -870,9 +811,10 @@ def show_products():
     for p in products:
         result += f"{p.name} - {p.image}<br>"
     return result
-# Cloudinary is configured at the top of this file
+
+
 # ══════════════════════════════════════════════════════════════════════
-#  Entry Point
+#  Startup: create tables + migrate columns + seed
 # ══════════════════════════════════════════════════════════════════════
 def add_missing_columns():
     """Add any new columns to existing DB tables — safe to run multiple times."""
@@ -885,13 +827,10 @@ def add_missing_columns():
     except Exception as e:
         print(f"[Migration] Note: {e}")
 
-    # product_images table is created by db.create_all() above — no ALTER needed
 
-
-# ── Run migrations + seed on every startup (Gunicorn & local) ────────
 with app.app_context():
-    db.create_all()          # creates tables that don't exist
-    add_missing_columns()    # adds columns that don't exist
+    db.create_all()
+    add_missing_columns()
     seed_products()
 
 
