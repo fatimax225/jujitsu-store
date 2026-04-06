@@ -12,174 +12,111 @@
 </div>
 
 <div style="display:grid;grid-template-columns:2fr 1fr;gap:24px;align-items:start;">
-    <div>
-        <!-- ── Main Product Form ── -->
-        <div class="admin-card">
-            <form action="{{ url_for('admin_edit_product', product_id=product.id) if action == 'edit' else url_for('admin_add_product') }}"
-                  method="POST" enctype="multipart/form-data">
+    <div class="admin-card">
+        <form action="{{ url_for('admin_edit_product', product_id=product.id) if action == 'edit' else url_for('admin_add_product') }}"
+              method="POST" enctype="multipart/form-data">
 
-                <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
-                    <div class="form-group">
-                        <label>Product Name (English) *</label>
-                        <input type="text" name="name" class="form-control" required
-                               value="{{ product.name if product else '' }}" placeholder="e.g. Rose Gift Box">
-                    </div>
-                    <div class="form-group">
-                        <label>اسم المنتج (عربي)</label>
-                        <input type="text" name="name_ar" class="form-control"
-                               value="{{ product.name_ar if product else '' }}" placeholder="مثال: صندوق الورد" dir="rtl"
-                               style="font-family:'Noto Naskh Arabic',serif;text-align:right;">
-                    </div>
-                </div>
-
-                <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;">
-                    <div class="form-group">
-                        <label>Price (BD) *</label>
-                        <input type="number" name="price" class="form-control" step="0.001" required
-                               value="{{ product.price if product else '' }}" placeholder="0.000">
-                    </div>
-                    <div class="form-group">
-                        <label>Discount %</label>
-                        <input type="number" name="discount_percent" class="form-control" step="0.1" min="0" max="100"
-                               value="{{ product.discount_percent if product else '0' }}" placeholder="0">
-                    </div>
-                    <div class="form-group">
-                        <label>Stock</label>
-                        <input type="number" name="stock" class="form-control" min="0"
-                               value="{{ product.stock if product else '100' }}">
-                    </div>
-                </div>
-
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
                 <div class="form-group">
-                    <label>Category *</label>
-                    <select name="category" class="form-control" required>
-                        {% set cats = ['birthday', 'eid', 'ramadan', 'baby', 'special', 'wedding', 'graduation', 'corporate'] %}
-                        {% for cat in cats %}
-                        <option value="{{ cat }}" {{ 'selected' if product and product.category == cat }}>
-                            {{ cat|capitalize }}
-                        </option>
-                        {% endfor %}
-                    </select>
+                    <label>Product Name (English) *</label>
+                    <input type="text" name="name" class="form-control" required
+                           value="{{ product.name if product else '' }}" placeholder="e.g. Rose Gift Box">
                 </div>
-
                 <div class="form-group">
-                    <label>Description (English)</label>
-                    <textarea name="description" class="form-control" rows="3"
-                              placeholder="Describe the product...">{{ product.description if product else '' }}</textarea>
+                    <label>اسم المنتج (عربي)</label>
+                    <input type="text" name="name_ar" class="form-control"
+                           value="{{ product.name_ar if product else '' }}" placeholder="مثال: صندوق الورد" dir="rtl"
+                           style="font-family:'Noto Naskh Arabic',serif;text-align:right;">
                 </div>
-
-                <div class="form-group">
-                    <label>الوصف (عربي)</label>
-                    <textarea name="description_ar" class="form-control" rows="3" dir="rtl"
-                              style="font-family:'Noto Naskh Arabic',serif;text-align:right;"
-                              placeholder="وصف المنتج بالعربية...">{{ product.description_ar if product else '' }}</textarea>
-                </div>
-
-                <div class="form-group">
-                    <label>Customizable Options (comma-separated)</label>
-                    <input type="text" name="customizable_options" class="form-control"
-                           value="{{ options if options else '' }}"
-                           placeholder="e.g. Red, Pink, White, Mixed">
-                    <div style="font-size:11px;color:var(--mid-gray);margin-top:6px;">
-                        Separate options with commas. E.g.: Small, Medium, Large
-                    </div>
-                </div>
-
-                <!-- ── Main Cover Image ── -->
-                <div class="form-group">
-                    <label>Main Cover Image <span style="color:var(--mid-gray);font-weight:400;">(الصورة الرئيسية)</span></label>
-                    <div style="border:2px dashed var(--border);border-radius:8px;padding:20px;text-align:center;cursor:pointer;transition:border-color 0.3s;"
-                         onclick="document.getElementById('product-image-input').click();">
-                        <input type="file" id="product-image-input" name="image" accept="image/*" style="display:none;">
-                        <img id="image-preview"
-                             src="{% if product and product.image and product.image.startswith('http') %}{{ product.image }}{% elif product and product.image and not product.image.startswith('default') %}{{ url_for('static', filename='images/uploads/' + product.image) }}{% else %}{% endif %}"
-                             style="max-width:200px;max-height:200px;margin:0 auto 12px;border-radius:6px;{% if product and product.image and (product.image.startswith('http') or not product.image.startswith('default')) %}display:block;{% else %}display:none;{% endif %}">
-                        <div style="color:var(--mid-gray);font-size:13px;">
-                            <i class="fas fa-cloud-upload-alt" style="font-size:24px;display:block;margin-bottom:8px;"></i>
-                            Click to upload cover image (PNG, JPG, WebP)
-                        </div>
-                    </div>
-                </div>
-
-                <div style="display:flex;gap:12px;margin-top:8px;">
-                    <button type="submit" class="btn btn-primary btn-lg">
-                        <i class="fas fa-save"></i>
-                        {{ 'Save Changes' if action == 'edit' else 'Add Product' }}
-                    </button>
-                    <a href="{{ url_for('admin_products') }}" class="btn btn-outline btn-lg">Cancel</a>
-                </div>
-            </form>
-        </div>
-
-        <!-- ── Gallery Images (only shown when editing) ── -->
-        {% if action == 'edit' and product %}
-        <div class="admin-card" style="margin-top:0;">
-            <div class="admin-card-title">
-                <i class="fas fa-images" style="color:var(--gold);margin-right:8px;"></i>
-                Gallery Images
-                <span style="font-size:11px;color:var(--mid-gray);font-weight:400;margin-left:8px;">
-                    ({{ product.images|length }} / يمكنك إضافة عدة صور)
-                </span>
             </div>
 
-            <!-- Existing gallery images -->
-            {% if product.images %}
-            <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:12px;margin-bottom:20px;">
-                {% for img in product.images %}
-                <div style="position:relative;border-radius:8px;overflow:hidden;border:1px solid var(--border);">
-                    <img src="{{ img.url }}" style="width:100%;aspect-ratio:1;object-fit:cover;display:block;"
-                         onerror="this.src='https://placehold.co/120x120/FAF7F2/C9868A?text=🎁'">
-                    <!-- Delete button -->
-                    <form action="{{ url_for('admin_delete_image', image_id=img.id) }}" method="POST"
-                          onsubmit="return confirm('Delete this image?');"
-                          style="position:absolute;top:4px;right:4px;">
-                        <button type="submit"
-                                style="background:rgba(220,53,69,0.9);color:#fff;border:none;width:26px;height:26px;
-                                       border-radius:50%;cursor:pointer;font-size:12px;display:flex;align-items:center;justify-content:center;">
-                            <i class="fas fa-times"></i>
-                        </button>
-                    </form>
-                    <div style="font-size:10px;color:var(--mid-gray);padding:4px 6px;text-align:center;background:#fafafa;">
-                        #{{ loop.index }}
-                    </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;">
+                <div class="form-group">
+                    <label>Price (BD) *</label>
+                    <input type="number" name="price" class="form-control" step="0.001" required
+                           value="{{ product.price if product else '' }}" placeholder="0.000">
                 </div>
-                {% endfor %}
+                <div class="form-group">
+                    <label>Discount %</label>
+                    <input type="number" name="discount_percent" class="form-control" step="0.1" min="0" max="100"
+                           value="{{ product.discount_percent if product else '0' }}" placeholder="0">
+                </div>
+                <div class="form-group">
+                    <label>Stock</label>
+                    <input type="number" name="stock" class="form-control" min="0"
+                           value="{{ product.stock if product else '100' }}">
+                </div>
             </div>
-            {% else %}
-            <p style="color:var(--mid-gray);font-size:13px;margin-bottom:16px;">No gallery images yet. Upload some below.</p>
-            {% endif %}
 
-            <!-- Upload new gallery images -->
-            <form action="{{ url_for('admin_upload_images', product_id=product.id) }}" method="POST" enctype="multipart/form-data">
-                <div style="border:2px dashed var(--border);border-radius:8px;padding:20px;text-align:center;cursor:pointer;transition:border-color 0.3s;background:var(--light-gray);"
-                     onclick="document.getElementById('gallery-input').click();"
-                     id="gallery-drop-zone">
-                    <input type="file" id="gallery-input" name="gallery_images"
-                           accept="image/*" multiple style="display:none;">
-                    <i class="fas fa-images" style="font-size:28px;color:var(--mid-gray);display:block;margin-bottom:8px;"></i>
-                    <div style="font-size:13px;color:var(--mid-gray);">
-                        Click to upload gallery images
-                        <br><span style="font-size:11px;opacity:0.7;">You can select multiple images at once</span>
-                    </div>
-                    <div id="gallery-preview" style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:12px;"></div>
+            <div class="form-group">
+                <label>Category *</label>
+                <select name="category" class="form-control" required>
+                    {% set cats = ['birthday', 'eid', 'ramadan', 'baby', 'special', 'wedding', 'graduation', 'corporate'] %}
+                    {% for cat in cats %}
+                    <option value="{{ cat }}" {{ 'selected' if product and product.category == cat }}>
+                        {{ cat|capitalize }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>Description (English)</label>
+                <textarea name="description" class="form-control" rows="3"
+                          placeholder="Describe the product...">{{ product.description if product else '' }}</textarea>
+            </div>
+
+            <div class="form-group">
+                <label>الوصف (عربي)</label>
+                <textarea name="description_ar" class="form-control" rows="3" dir="rtl"
+                          style="font-family:'Noto Naskh Arabic',serif;text-align:right;"
+                          placeholder="وصف المنتج بالعربية...">{{ product.description_ar if product else '' }}</textarea>
+            </div>
+
+            <div class="form-group">
+                <label>Customizable Options (comma-separated)</label>
+                <input type="text" name="customizable_options" class="form-control"
+                       value="{{ options if options else '' }}"
+                       placeholder="e.g. Red, Pink, White, Mixed">
+                <div style="font-size:11px;color:var(--mid-gray);margin-top:6px;">
+                    Separate options with commas. E.g.: Small, Medium, Large
                 </div>
-                <button type="submit" class="btn btn-primary" style="width:100%;margin-top:12px;" id="gallery-upload-btn" disabled>
-                    <i class="fas fa-upload"></i> Upload Selected Images
+            </div>
+
+            <div class="form-group">
+                <label>Product Image</label>
+                <div style="border:2px dashed var(--border);border-radius:8px;padding:20px;text-align:center;cursor:pointer;transition:border-color 0.3s;"
+                     onclick="document.getElementById('product-image-input').click();">
+                    <input type="file" id="product-image-input" name="image" accept="image/*" style="display:none;">
+                    <img id="image-preview"
+                         src="{% if product and product.image and product.image.startswith('http') %}{{ product.image }}{% elif product and product.image and not product.image.startswith('default') %}{{ url_for('static', filename='images/uploads/' + product.image) }}{% else %}{% endif %}"
+                         style="max-width:200px;max-height:200px;margin:0 auto 12px;border-radius:6px;{% if product and product.image and (product.image.startswith('http') or not product.image.startswith('default')) %}display:block;{% else %}display:none;{% endif %}">
+                    <div style="color:var(--mid-gray);font-size:13px;">
+                        <i class="fas fa-cloud-upload-alt" style="font-size:24px;display:block;margin-bottom:8px;"></i>
+                        Click to upload image (PNG, JPG, WebP)
+                    </div>
+                </div>
+            </div>
+
+            <div style="display:flex;gap:12px;margin-top:8px;">
+                <button type="submit" class="btn btn-primary btn-lg">
+                    <i class="fas fa-save"></i>
+                    {{ 'Save Changes' if action == 'edit' else 'Add Product' }}
                 </button>
-            </form>
-        </div>
-        {% endif %}
+                <a href="{{ url_for('admin_products') }}" class="btn btn-outline btn-lg">Cancel</a>
+            </div>
+        </form>
     </div>
 
-    <!-- ── Tips + Danger Zone ── -->
+    <!-- Tips Card -->
     <div class="admin-card">
         <div class="admin-card-title">💡 Tips</div>
         <div style="font-size:13px;color:var(--mid-gray);line-height:1.9;">
-            <p><strong>Cover Image:</strong> The main image shown on product cards. Use 1:1 ratio, min 400×400px.</p>
+            <p><strong>Image:</strong> Use square images (1:1 ratio) for best results. Min 400×400px.</p>
             <br>
-            <p><strong>Gallery Images:</strong> Additional photos shown in the product page slider. Add them after saving the product.</p>
+            <p><strong>Options:</strong> Add comma-separated choices like colors, sizes, or scents.</p>
             <br>
-            <p><strong>Options:</strong> Comma-separated choices like colors, sizes, or scents.</p>
+            <p><strong>Discount:</strong> Enter percentage (e.g., 10 for 10% off). Leave 0 for no discount.</p>
             <br>
             <p><strong>Arabic Name:</strong> Always add the Arabic name for bilingual support.</p>
         </div>
@@ -197,36 +134,5 @@
         {% endif %}
     </div>
 </div>
-
-<script>
-// Gallery image preview before upload
-const galleryInput = document.getElementById('gallery-input');
-const galleryPreview = document.getElementById('gallery-preview');
-const galleryUploadBtn = document.getElementById('gallery-upload-btn');
-
-if (galleryInput) {
-    galleryInput.addEventListener('change', function() {
-        galleryPreview.innerHTML = '';
-        const files = Array.from(this.files);
-        if (files.length === 0) {
-            galleryUploadBtn.disabled = true;
-            return;
-        }
-        galleryUploadBtn.disabled = false;
-        galleryUploadBtn.innerHTML = `<i class="fas fa-upload"></i> Upload ${files.length} Image${files.length > 1 ? 's' : ''}`;
-
-        files.forEach(file => {
-            const reader = new FileReader();
-            reader.onload = e => {
-                const img = document.createElement('img');
-                img.src = e.target.result;
-                img.style.cssText = 'width:60px;height:60px;object-fit:cover;border-radius:6px;border:2px solid var(--burgundy);';
-                galleryPreview.appendChild(img);
-            };
-            reader.readAsDataURL(file);
-        });
-    });
-}
-</script>
 
 {% endblock %}
