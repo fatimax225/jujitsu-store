@@ -83,20 +83,87 @@
                 </div>
             </div>
 
+            <!-- ═══ MULTI-IMAGE SECTION ═══ -->
             <div class="form-group">
-                <label>Product Image</label>
-                <div style="border:2px dashed var(--border);border-radius:8px;padding:20px;text-align:center;cursor:pointer;transition:border-color 0.3s;"
-                     onclick="document.getElementById('product-image-input').click();">
-                    <input type="file" id="product-image-input" name="image" accept="image/*" style="display:none;">
-                    <img id="image-preview"
-                         src="{% if product and product.image and product.image.startswith('http') %}{{ product.image }}{% elif product and product.image and not product.image.startswith('default') %}{{ url_for('static', filename='images/uploads/' + product.image) }}{% else %}{% endif %}"
-                         style="max-width:200px;max-height:200px;margin:0 auto 12px;border-radius:6px;{% if product and product.image and (product.image.startswith('http') or not product.image.startswith('default')) %}display:block;{% else %}display:none;{% endif %}">
-                    <div style="color:var(--mid-gray);font-size:13px;">
-                        <i class="fas fa-cloud-upload-alt" style="font-size:24px;display:block;margin-bottom:8px;"></i>
-                        Click to upload image (PNG, JPG, WebP)
+                <label style="font-weight:700;font-size:14px;">
+                    Product Images
+                    <span style="font-weight:400;color:var(--mid-gray);font-size:12px;">
+                        — Select multiple files at once
+                    </span>
+                </label>
+
+                {% if action == 'edit' and product and product.images %}
+                <!-- Existing gallery -->
+                <div style="margin-bottom:16px;">
+                    <div style="font-size:12px;color:var(--mid-gray);margin-bottom:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;">
+                        Current Images ({{ product.images|length }})
+                    </div>
+                    <div style="display:flex;flex-wrap:wrap;gap:10px;">
+                        {% for img in product.images %}
+                        <div style="position:relative;display:inline-block;">
+                            <img src="{{ img.url }}"
+                                 style="width:90px;height:90px;object-fit:cover;border-radius:8px;border:2px solid var(--border);
+                                        {% if loop.first %}border-color:#C9868A;{% endif %}"
+                                 onerror="this.src='https://placehold.co/90x90/FAF7F2/C9868A?text=🎁'">
+                            {% if loop.first %}
+                            <span style="position:absolute;top:4px;left:4px;background:#C9868A;color:#fff;
+                                         font-size:9px;font-weight:700;padding:2px 6px;border-radius:4px;">MAIN</span>
+                            {% endif %}
+                            <!-- Delete button -->
+                            <form action="{{ url_for('admin_delete_product_image', image_id=img.id) }}"
+                                  method="POST"
+                                  onsubmit="return confirm('Remove this image?');"
+                                  style="position:absolute;top:-6px;right:-6px;margin:0;">
+                                <button type="submit"
+                                        style="width:22px;height:22px;border-radius:50%;border:none;
+                                               background:#c0392b;color:#fff;font-size:12px;
+                                               cursor:pointer;display:flex;align-items:center;
+                                               justify-content:center;padding:0;line-height:1;">
+                                    ×
+                                </button>
+                            </form>
+                        </div>
+                        {% endfor %}
                     </div>
                 </div>
+                {% elif action == 'edit' and product and product.image and not product.image.startswith('default') %}
+                <!-- Legacy single image fallback -->
+                <div style="margin-bottom:16px;">
+                    <div style="font-size:12px;color:var(--mid-gray);margin-bottom:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;">
+                        Current Image
+                    </div>
+                    <img src="{{ product.image if product.image.startswith('http') else url_for('static', filename='images/uploads/' + product.image) }}"
+                         style="width:90px;height:90px;object-fit:cover;border-radius:8px;border:2px solid #C9868A;"
+                         onerror="this.src='https://placehold.co/90x90/FAF7F2/C9868A?text=🎁'">
+                </div>
+                {% endif %}
+
+                <!-- Upload dropzone -->
+                <div id="dropzone"
+                     style="border:2px dashed var(--border);border-radius:10px;padding:28px 20px;
+                            text-align:center;cursor:pointer;transition:all 0.25s;background:var(--warm-white);"
+                     onclick="document.getElementById('images-input').click();"
+                     ondragover="event.preventDefault();this.style.borderColor='#C9868A';this.style.background='#FDF3F0';"
+                     ondragleave="this.style.borderColor='var(--border)';this.style.background='var(--warm-white)';"
+                     ondrop="handleDrop(event);">
+
+                    <input type="file" id="images-input" name="images"
+                           accept="image/*" multiple style="display:none;"
+                           onchange="previewImages(this.files)">
+
+                    <i class="fas fa-cloud-upload-alt" style="font-size:32px;color:var(--mid-gray);display:block;margin-bottom:10px;"></i>
+                    <div style="font-weight:700;color:var(--charcoal);margin-bottom:4px;">
+                        Click to upload or drag & drop
+                    </div>
+                    <div style="font-size:12px;color:var(--mid-gray);">
+                        PNG, JPG, WebP — hold Ctrl/Cmd to select multiple
+                    </div>
+                </div>
+
+                <!-- Preview of newly selected images -->
+                <div id="new-preview" style="display:flex;flex-wrap:wrap;gap:10px;margin-top:12px;"></div>
             </div>
+            <!-- ═══ END MULTI-IMAGE ═══ -->
 
             <div style="display:flex;gap:12px;margin-top:8px;">
                 <button type="submit" class="btn btn-primary btn-lg">
@@ -112,7 +179,9 @@
     <div class="admin-card">
         <div class="admin-card-title">💡 Tips</div>
         <div style="font-size:13px;color:var(--mid-gray);line-height:1.9;">
-            <p><strong>Image:</strong> Use square images (1:1 ratio) for best results. Min 400×400px.</p>
+            <p><strong>Images:</strong> Select multiple files at once (Ctrl+Click or Cmd+Click). First image becomes the main display image.</p>
+            <br>
+            <p><strong>Remove images:</strong> Click the × button on any image to delete it individually.</p>
             <br>
             <p><strong>Options:</strong> Add comma-separated choices like colors, sizes, or scents.</p>
             <br>
@@ -134,5 +203,48 @@
         {% endif %}
     </div>
 </div>
+
+<script>
+function previewImages(files) {
+    const container = document.getElementById('new-preview');
+    container.innerHTML = '';
+    Array.from(files).forEach((file, i) => {
+        const reader = new FileReader();
+        reader.onload = e => {
+            const wrap = document.createElement('div');
+            wrap.style.cssText = 'position:relative;display:inline-block;';
+            wrap.innerHTML = `
+                <img src="${e.target.result}"
+                     style="width:90px;height:90px;object-fit:cover;border-radius:8px;
+                            border:2px solid ${i === 0 ? '#C9868A' : 'var(--border)'};">
+                ${i === 0 ? '<span style="position:absolute;top:4px;left:4px;background:#C9868A;color:#fff;font-size:9px;font-weight:700;padding:2px 6px;border-radius:4px;">MAIN</span>' : ''}
+                <span style="position:absolute;bottom:4px;right:4px;background:rgba(0,0,0,0.55);color:#fff;font-size:9px;padding:1px 5px;border-radius:3px;">${i+1}</span>
+            `;
+            container.appendChild(wrap);
+        };
+        reader.readAsDataURL(file);
+    });
+    // Update dropzone text
+    const dz = document.getElementById('dropzone');
+    dz.querySelector('div').textContent = `${files.length} file${files.length > 1 ? 's' : ''} selected`;
+    dz.style.borderColor = '#C9868A';
+    dz.style.background  = '#FDF3F0';
+}
+
+function handleDrop(event) {
+    event.preventDefault();
+    const dz = document.getElementById('dropzone');
+    dz.style.borderColor = 'var(--border)';
+    dz.style.background  = 'var(--warm-white)';
+    const input = document.getElementById('images-input');
+    // Transfer dropped files to the input
+    const dt = new DataTransfer();
+    Array.from(event.dataTransfer.files)
+        .filter(f => f.type.startsWith('image/'))
+        .forEach(f => dt.items.add(f));
+    input.files = dt.files;
+    previewImages(input.files);
+}
+</script>
 
 {% endblock %}
