@@ -25,7 +25,6 @@ cloudinary.config(
 )
 
 def upload_to_cloudinary(file_obj, folder='jujita'):
-    """Upload file to Cloudinary; returns HTTPS URL or None on failure."""
     try:
         result = cloudinary.uploader.upload(
             file_obj,
@@ -45,8 +44,7 @@ app = Flask(__name__)
 app.config['TEMPLATES_AUTO_RELOAD'] = True
 app.secret_key = os.environ.get('SECRET_KEY', 'jujita_gifts_secret_2024')
 
-# ── Database URL ──────────────────────────────────────────────────────
-# FIX: was fetched twice, fallback was set AFTER config — now corrected.
+# ── Database URL (FIXED: was fetched twice + missing postgres→postgresql) ──
 _db_url = os.environ.get('DATABASE_URL', '')
 if _db_url.startswith('postgres://'):
     _db_url = _db_url.replace('postgres://', 'postgresql://', 1)
@@ -60,13 +58,11 @@ app.config['SQLALCHEMY_ENGINE_OPTIONS']     = {
     'pool_recycle':  300,
 }
 
-# ── Uploads ───────────────────────────────────────────────────────────
 UPLOAD_FOLDER      = 'static/images/uploads'
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
 app.config['UPLOAD_FOLDER']      = UPLOAD_FOLDER
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
 
-# ── Admin credentials (set in Render → Environment) ───────────────────
 ADMIN_USERNAME = os.environ.get('ADMIN_USERNAME', 'jojo')
 ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD', '2256')
 
@@ -100,15 +96,19 @@ class Product(db.Model):
     category             = db.Column(db.String(80), nullable=False)
     description          = db.Column(db.Text)
     description_ar       = db.Column(db.Text)
-    image                = db.Column(db.String(500), default='default_product.jpg')
-    customizable_options = db.Column(db.Text)          # JSON string
+    image                = db.Column(db.String(500), default='default_product.jpg')  # kept for backwards compat
+    customizable_options = db.Column(db.Text)
     discount_percent     = db.Column(db.Float, default=0)
     stock                = db.Column(db.Integer, default=100)
-    is_hidden            = db.Column(db.Boolean,  default=False)
+    is_hidden            = db.Column(db.Boolean, default=False)
     created_at           = db.Column(db.DateTime, default=datetime.utcnow)
 
     reviews = db.relationship('Review', backref='product', lazy=True,
                               cascade='all, delete-orphan')
+    # ── NEW: multiple images ──
+    images  = db.relationship('ProductImage', backref='product', lazy=True,
+                              cascade='all, delete-orphan',
+                              order_by='ProductImage.sort_order')
 
     @property
     def options_list(self):
@@ -121,6 +121,26 @@ class Product(db.Model):
     def final_price(self):
         return self.price * (1 - self.discount_percent / 100)
 
+    def primary_image_url(self):
+        """Return the first gallery image, or fall back to legacy self.image."""
+        if self.images:
+            return self.images[0].url
+        if self.image and self.image.startswith('http'):
+            return self.image
+        if self.image and not self.image.startswith('default'):
+            return url_for('static', filename='images/uploads/' + self.image)
+        return None   # caller shows placeholder
+
+
+# ── NEW MODEL ─────────────────────────────────────────────────────────
+class ProductImage(db.Model):
+    __tablename__ = 'product_images'
+    id         = db.Column(db.Integer, primary_key=True)
+    product_id = db.Column(db.Integer, db.ForeignKey('products.id'), nullable=False)
+    url        = db.Column(db.String(500), nullable=False)
+    sort_order = db.Column(db.Integer, default=0)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
 
 class Order(db.Model):
     __tablename__ = 'orders'
@@ -130,7 +150,7 @@ class Order(db.Model):
     customer_name     = db.Column(db.String(150), nullable=False)
     customer_phone    = db.Column(db.String(30),  nullable=False)
     customer_address  = db.Column(db.Text,        nullable=False)
-    items             = db.Column(db.Text,        nullable=False)   # JSON
+    items             = db.Column(db.Text,        nullable=False)
     total_amount      = db.Column(db.Float,       nullable=False)
     status            = db.Column(db.String(40),  default='pending')
     payment_proof     = db.Column(db.String(500))
@@ -170,27 +190,27 @@ class Offer(db.Model):
 
 
 # ══════════════════════════════════════════════════════════════════════
-#  Seed Data  (runs only when products table is empty)
+#  Seed Data
 # ══════════════════════════════════════════════════════════════════════
 def seed_products():
     if Product.query.count() > 0:
         return
     samples = [
-        Product(name='Luxury Rose Box',     name_ar='صندوق الورد الفاخر',
+        Product(name='Luxury Rose Box', name_ar='صندوق الورد الفاخر',
                 price=12.500, category='birthday',
                 description='Beautiful handcrafted rose arrangement in an elegant gift box',
                 description_ar='ترتيب ورد مصنوع يدويًا في صندوق هدايا أنيق',
                 image='default_product.jpg',
                 customizable_options=json.dumps(['Red', 'Pink', 'White', 'Mixed']),
                 discount_percent=0),
-        Product(name='Eid Gift Basket',     name_ar='سلة هدايا العيد',
+        Product(name='Eid Gift Basket', name_ar='سلة هدايا العيد',
                 price=18.000, category='eid',
                 description='Premium Eid gift basket with assorted sweets and chocolates',
                 description_ar='سلة هدايا العيد المميزة مع حلويات وشوكولاتة متنوعة',
                 image='default_product.jpg',
                 customizable_options=json.dumps(['Small', 'Medium', 'Large']),
                 discount_percent=10),
-        Product(name='Chocolate Bouquet',   name_ar='باقة الشوكولاتة',
+        Product(name='Chocolate Bouquet', name_ar='باقة الشوكولاتة',
                 price=8.500, category='birthday',
                 description='Elegant bouquet made entirely of premium chocolates',
                 description_ar='باقة أنيقة مصنوعة بالكامل من الشوكولاتة الفاخرة',
@@ -204,14 +224,14 @@ def seed_products():
                 image='default_product.jpg',
                 customizable_options=json.dumps(['Gold', 'Silver', 'Rose Gold']),
                 discount_percent=15),
-        Product(name='Spa Relaxation Kit',  name_ar='طقم الاسترخاء',
+        Product(name='Spa Relaxation Kit', name_ar='طقم الاسترخاء',
                 price=25.000, category='special',
                 description='Complete spa kit with bath salts, candles, and luxury soaps',
                 description_ar='طقم سبا كامل مع أملاح الحمام والشموع والصابون الفاخر',
                 image='default_product.jpg',
                 customizable_options=json.dumps(['Lavender', 'Rose', 'Vanilla', 'Ocean']),
                 discount_percent=0),
-        Product(name='Baby Shower Gift',    name_ar='هدية استقبال المولود',
+        Product(name='Baby Shower Gift', name_ar='هدية استقبال المولود',
                 price=30.000, category='baby',
                 description='Adorable baby gift set with plush toys and baby essentials',
                 description_ar='طقم هدايا الأطفال الرائع مع دمى وضروريات الأطفال',
@@ -227,8 +247,7 @@ def seed_products():
 #  Helpers
 # ══════════════════════════════════════════════════════════════════════
 def allowed_file(filename):
-    return '.' in filename and \
-           filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 
 def admin_required(f):
@@ -240,20 +259,30 @@ def admin_required(f):
     return decorated
 
 
+def _image_url(product):
+    """Return a display-ready URL for a product (legacy + new gallery aware)."""
+    if product.images:
+        return product.images[0].url
+    if product.image and product.image.startswith('http'):
+        return product.image
+    if product.image and not product.image.startswith('default'):
+        return url_for('static', filename='images/uploads/' + product.image)
+    return 'https://placehold.co/400x400/FAF7F2/C9868A?text=%F0%9F%8E%81'
+
+
 @app.context_processor
-def inject_cart_count():
+def inject_globals():
     cart  = session.get('cart', {})
     count = sum(item.get('quantity', 1) for item in cart.values())
     lang  = session.get('lang', 'en')
-    return dict(cart_count=count, lang=lang)
+    return dict(cart_count=count, lang=lang, image_url=_image_url)
 
 
 def _build_cart(cart_session):
-    """Return (cart_items list, total float) from session dict."""
     if not cart_session:
         return [], 0.0
-    ids      = list(cart_session.keys())
-    prods    = Product.query.filter(Product.id.in_(ids)).all()
+    ids   = list(cart_session.keys())
+    prods = Product.query.filter(Product.id.in_(ids)).all()
     items, total = [], 0.0
     for p in prods:
         pid      = str(p.id)
@@ -320,7 +349,8 @@ def product_detail(product_id):
                   .filter_by(product_id=product_id).scalar())
     related = (Product.query
                .filter(Product.category == product.category,
-                       Product.id != product_id)
+                       Product.id != product_id,
+                       Product.is_hidden == False)
                .limit(4).all())
     return render_template('product_detail.html',
                            product=product, reviews=reviews,
@@ -329,7 +359,7 @@ def product_detail(product_id):
 
 
 # ══════════════════════════════════════════════════════════════════════
-#  Auth Routes
+#  Auth
 # ══════════════════════════════════════════════════════════════════════
 @app.route('/register', methods=['GET', 'POST'])
 def register():
@@ -379,7 +409,7 @@ def logout():
 
 
 # ══════════════════════════════════════════════════════════════════════
-#  Cart Routes
+#  Cart
 # ══════════════════════════════════════════════════════════════════════
 @app.route('/cart')
 def cart():
@@ -432,7 +462,6 @@ def checkout():
     if not cart_session:
         flash('Your cart is empty', 'error')
         return redirect(url_for('cart'))
-
     if request.method == 'POST':
         name    = request.form.get('name', '').strip()
         phone   = request.form.get('phone', '').strip()
@@ -441,7 +470,6 @@ def checkout():
         if not all([name, phone, address]):
             flash('Please fill all required fields', 'error')
             return redirect(url_for('checkout'))
-
         cart_items, total = _build_cart(cart_session)
         items_data = [
             {'id': ci['product'].id, 'name': ci['product'].name,
@@ -449,7 +477,6 @@ def checkout():
              'option': ci['option'], 'subtotal': ci['subtotal']}
             for ci in cart_items
         ]
-
         order = Order(
             order_number     = 'JG-' + str(uuid.uuid4())[:8].upper(),
             user_id          = session.get('user_id'),
@@ -462,24 +489,18 @@ def checkout():
         )
         db.session.add(order)
         db.session.commit()
-
         session['cart'] = {}
         session['last_order'] = {
             'order_number': order.order_number,
-            'total':  total,
-            'name':   name,
-            'phone':  phone,
-            'items':  items_data,
+            'total': total, 'name': name, 'phone': phone, 'items': items_data,
         }
         return redirect(url_for('order_confirmation'))
-
     user_data = None
     if session.get('user_id'):
         user_data = User.query.get(session['user_id'])
     cart_items, total = _build_cart(cart_session)
-    return render_template('checkout.html',
-                           cart_items=cart_items, total=total,
-                           user_data=user_data)
+    return render_template('checkout.html', cart_items=cart_items,
+                           total=total, user_data=user_data)
 
 
 @app.route('/order/confirmation')
@@ -522,8 +543,7 @@ def add_review():
         flash('Please login to write a review', 'error')
         return redirect(url_for('login'))
     pid      = request.form.get('product_id')
-    existing = Review.query.filter_by(product_id=pid,
-                                      user_id=session['user_id']).first()
+    existing = Review.query.filter_by(product_id=pid, user_id=session['user_id']).first()
     if existing:
         flash('You have already reviewed this product', 'error')
     else:
@@ -547,11 +567,9 @@ def add_review():
 def about():
     return render_template('about.html')
 
-
 @app.route('/contact')
 def contact():
     return render_template('contact.html')
-
 
 @app.route('/scoop')
 def scoop():
@@ -620,16 +638,8 @@ def admin_products():
 @admin_required
 def admin_add_product():
     if request.method == 'POST':
+        # Legacy single image (first uploaded file becomes product.image too)
         image_filename = 'default_product.jpg'
-        if 'image' in request.files:
-            file = request.files['image']
-            if file and file.filename and allowed_file(file.filename):
-                url = upload_to_cloudinary(file)
-                if url:
-                    image_filename = url
-                else:
-                    flash('Image upload failed, using default.', 'error')
-
         options_raw = request.form.get('customizable_options', '')
         options     = json.dumps([o.strip() for o in options_raw.split(',') if o.strip()])
 
@@ -646,11 +656,27 @@ def admin_add_product():
             stock                = int(request.form.get('stock', 100)),
         )
         db.session.add(product)
+        db.session.flush()   # get product.id before committing
+
+        # ── Upload all selected images ──
+        files = request.files.getlist('images')
+        for idx, file in enumerate(files):
+            if file and file.filename and allowed_file(file.filename):
+                url = upload_to_cloudinary(file)
+                if url:
+                    if idx == 0:
+                        product.image = url   # keep legacy field in sync
+                    db.session.add(ProductImage(
+                        product_id = product.id,
+                        url        = url,
+                        sort_order = idx,
+                    ))
+
         db.session.commit()
         flash('Product added successfully!', 'success')
         return redirect(url_for('admin_products'))
-    return render_template('admin/product_form.html', product=None,
-                           options='', action='add')
+
+    return render_template('admin/product_form.html', product=None, options='', action='add')
 
 
 @app.route('/admin/products/edit/<int:product_id>', methods=['GET', 'POST'])
@@ -658,15 +684,6 @@ def admin_add_product():
 def admin_edit_product(product_id):
     product = Product.query.get_or_404(product_id)
     if request.method == 'POST':
-        if 'image' in request.files:
-            file = request.files['image']
-            if file and file.filename and allowed_file(file.filename):
-                url = upload_to_cloudinary(file)
-                if url:
-                    product.image = url
-                else:
-                    flash('Image upload failed, keeping existing image.', 'error')
-
         options_raw              = request.form.get('customizable_options', '')
         product.name             = request.form.get('name')
         product.name_ar          = request.form.get('name_ar', '')
@@ -678,6 +695,24 @@ def admin_edit_product(product_id):
             [o.strip() for o in options_raw.split(',') if o.strip()])
         product.discount_percent = float(request.form.get('discount_percent', 0))
         product.stock            = int(request.form.get('stock', 100))
+
+        # ── Upload new images (add to existing gallery) ──
+        files = request.files.getlist('images')
+        existing_count = len(product.images)
+        added = 0
+        for file in files:
+            if file and file.filename and allowed_file(file.filename):
+                url = upload_to_cloudinary(file)
+                if url:
+                    if existing_count == 0 and added == 0:
+                        product.image = url   # sync legacy field
+                    db.session.add(ProductImage(
+                        product_id = product.id,
+                        url        = url,
+                        sort_order = existing_count + added,
+                    ))
+                    added += 1
+
         db.session.commit()
         flash('Product updated!', 'success')
         return redirect(url_for('admin_products'))
@@ -686,6 +721,28 @@ def admin_edit_product(product_id):
                            product=product,
                            options=', '.join(product.options_list),
                            action='edit')
+
+
+# ── NEW: delete a single image from gallery ───────────────────────────
+@app.route('/admin/products/image/delete/<int:image_id>', methods=['POST'])
+@admin_required
+def admin_delete_product_image(image_id):
+    img = ProductImage.query.get_or_404(image_id)
+    product_id = img.product_id
+    db.session.delete(img)
+    # If we just deleted the first image, sync product.image to the next one
+    remaining = (ProductImage.query
+                 .filter_by(product_id=product_id)
+                 .order_by(ProductImage.sort_order)
+                 .first())
+    product = Product.query.get(product_id)
+    if remaining:
+        product.image = remaining.url
+    else:
+        product.image = 'default_product.jpg'
+    db.session.commit()
+    flash('Image deleted.', 'success')
+    return redirect(url_for('admin_edit_product', product_id=product_id))
 
 
 @app.route('/admin/products/delete/<int:product_id>', methods=['POST'])
@@ -723,8 +780,7 @@ def admin_orders():
 @admin_required
 def admin_order_detail(order_id):
     order = Order.query.get_or_404(order_id)
-    return render_template('admin/order_detail.html',
-                           order=order, items=order.items_list)
+    return render_template('admin/order_detail.html', order=order, items=order.items_list)
 
 
 @app.route('/admin/orders/update_status/<int:order_id>', methods=['POST'])
@@ -793,12 +849,13 @@ def admin_delete_offer(offer_id):
 
 
 # ══════════════════════════════════════════════════════════════════════
-#  Admin — Init DB  (run once after first Render deploy)
+#  Admin — Init DB
 # ══════════════════════════════════════════════════════════════════════
 @app.route('/admin/init-db')
 @admin_required
 def admin_init_db():
     db.create_all()
+    add_missing_columns()
     seed_products()
     flash('✅ Database initialised and sample products seeded!', 'success')
     return redirect(url_for('admin_dashboard'))
@@ -806,18 +863,14 @@ def admin_init_db():
 
 @app.route('/show-products')
 def show_products():
-    products = Product.query.all()
-    result = ""
-    for p in products:
-        result += f"{p.name} - {p.image}<br>"
-    return result
+    prods = Product.query.all()
+    return '<br>'.join(f"{p.name} — {p.image} — {len(p.images)} gallery imgs" for p in prods)
 
 
 # ══════════════════════════════════════════════════════════════════════
-#  Startup: create tables + migrate columns + seed
+#  Startup migrations
 # ══════════════════════════════════════════════════════════════════════
 def add_missing_columns():
-    """Add any new columns to existing DB tables — safe to run multiple times."""
     try:
         with db.engine.connect() as conn:
             conn.execute(db.text(
