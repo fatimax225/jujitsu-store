@@ -10,7 +10,11 @@
         {% for cat in categories %}
         <a href="{{ url_for('products', category=cat.category) }}"
            class="category-pill {{ 'active' if selected_category == cat.category }}">
-            {% if cat.category == 'birthday' %}🎂{% elif cat.category == 'eid' %}🌙{% elif cat.category == 'ramadan' %}✨{% elif cat.category == 'baby' %}👶{% else %}🎁{% endif %}
+            {% if cat.category == 'birthday' %}🎂
+            {% elif cat.category == 'eid' %}🌙
+            {% elif cat.category == 'ramadan' %}✨
+            {% elif cat.category == 'baby' %}👶
+            {% else %}🎁{% endif %}
             {{ cat.category|capitalize }}
         </a>
         {% endfor %}
@@ -18,7 +22,7 @@
 </div>
 
 <div class="section">
-    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:32px; flex-wrap:wrap; gap:16px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:32px;flex-wrap:wrap;gap:16px;">
         <h1 style="font-family:var(--font-display);font-size:32px;color:var(--burgundy);">
             {% if search %}
                 {{ 'نتائج البحث عن' if lang == 'ar' else 'Results for' }}: "{{ search }}"
@@ -39,12 +43,28 @@
         {% set price = product.price * (1 - product.discount_percent / 100) %}
         <div class="product-card">
             <div class="product-img-wrapper">
-           <img src="{% if product.image and product.image.startswith('http') %}{{ product.image }}{% elif product.image and not product.image.startswith('default') %}{{ url_for('static', filename='images/uploads/' + product.image) }}{% else %}{{ url_for('static', filename='images/default_product.png') }}{% endif %}" alt="{{ product.name }}" onerror="this.src='https://placehold.co/400x400/FAF7F2/C9868A?text=🎁'">
+                {# image_url() is injected via context_processor — works for both legacy + new gallery #}
+                <img src="{{ image_url(product) or 'https://placehold.co/400x400/FAF7F2/C9868A?text=🎁' }}"
+                     alt="{{ product.name }}"
+                     onerror="this.src='https://placehold.co/400x400/FAF7F2/C9868A?text=🎁'">
+
                 {% if product.discount_percent > 0 %}
                 <span class="product-badge sale">-{{ product.discount_percent|int }}%</span>
                 {% endif %}
+
+                <!-- Show image count badge if multiple images -->
+                {% if product.images|length > 1 %}
+                <span style="position:absolute;top:10px;right:10px;background:rgba(0,0,0,0.5);
+                             color:#fff;font-size:10px;font-weight:700;padding:3px 8px;
+                             border-radius:20px;">
+                    <i class="fas fa-images" style="margin-right:3px;"></i>{{ product.images|length }}
+                </span>
+                {% endif %}
+
                 <div class="product-actions-overlay">
-                    <a href="{{ url_for('product_detail', product_id=product.id) }}" class="btn btn-outline" style="background:rgba(255,255,255,0.9);color:var(--burgundy);">
+                    <a href="{{ url_for('product_detail', product_id=product.id) }}"
+                       class="btn btn-outline"
+                       style="background:rgba(255,255,255,0.9);color:var(--burgundy);">
                         {{ 'تفاصيل' if lang == 'ar' else 'Details' }}
                     </a>
                     <form action="{{ url_for('add_to_cart') }}" method="POST" style="flex:1;display:flex;">
@@ -75,9 +95,10 @@
         </div>
         {% endfor %}
     </div>
+
     {% else %}
-    <div style="text-align:center; padding:80px 20px;">
-        <div style="font-size:60px; margin-bottom:20px;">🎁</div>
+    <div style="text-align:center;padding:80px 20px;">
+        <div style="font-size:60px;margin-bottom:20px;">🎁</div>
         <h3 style="font-family:var(--font-display);font-size:26px;color:var(--charcoal);margin-bottom:12px;">
             {{ 'لا توجد منتجات' if lang == 'ar' else 'No products found' }}
         </h3>
