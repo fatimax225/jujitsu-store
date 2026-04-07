@@ -992,3 +992,4 @@ with app.app_context():
 if __name__ == '__main__':
     os.makedirs(UPLOAD_FOLDER, exist_ok=True)
     app.run(debug=True, use_reloader=True, port=5008)
+ 
