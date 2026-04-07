@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block title %}{{ 'تسوّق' if lang == 'ar' else 'Shop' }} | Jujita Shop{% endblock %}
 {% block content %}
-
+ 
 <div class="category-bar">
     <div class="category-pills">
         <a href="{{ url_for('products') }}" class="category-pill {{ 'active' if not selected_category }}">
@@ -20,7 +20,7 @@
         {% endfor %}
     </div>
 </div>
-
+ 
 <div class="section">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:32px;flex-wrap:wrap;gap:16px;">
         <h1 style="font-family:var(--font-display);font-size:32px;color:var(--burgundy);">
@@ -36,7 +36,7 @@
             {{ products|length }} {{ 'منتج' if lang == 'ar' else 'products' }}
         </span>
     </div>
-
+ 
     {% if products %}
     <div class="product-grid">
         {% for product in products %}
@@ -47,11 +47,11 @@
                 <img src="{{ image_url(product) or 'https://placehold.co/400x400/FAF7F2/C9868A?text=🎁' }}"
                      alt="{{ product.name }}"
                      onerror="this.src='https://placehold.co/400x400/FAF7F2/C9868A?text=🎁'">
-
+ 
                 {% if product.discount_percent > 0 %}
                 <span class="product-badge sale">-{{ product.discount_percent|int }}%</span>
                 {% endif %}
-
+ 
                 <!-- Show image count badge if multiple images -->
                 {% if product.images|length > 1 %}
                 <span style="position:absolute;top:10px;right:10px;background:rgba(0,0,0,0.5);
@@ -60,7 +60,7 @@
                     <i class="fas fa-images" style="margin-right:3px;"></i>{{ product.images|length }}
                 </span>
                 {% endif %}
-
+ 
                 <div class="product-actions-overlay">
                     <a href="{{ url_for('product_detail', product_id=product.id) }}"
                        class="btn btn-outline"
@@ -95,7 +95,7 @@
         </div>
         {% endfor %}
     </div>
-
+ 
     {% else %}
     <div style="text-align:center;padding:80px 20px;">
         <div style="font-size:60px;margin-bottom:20px;">🎁</div>
