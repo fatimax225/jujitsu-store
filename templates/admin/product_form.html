@@ -1,250 +1,351 @@
-{% extends "admin/base.html" %}
-{% block title %}{{ 'Edit' if action == 'edit' else 'Add' }} Product{% endblock %}
+{% extends "base.html" %}
+{% block title %}{{ product.name }} | Jujita Shop{% endblock %}
 {% block content %}
 
-<div style="display:flex;align-items:center;gap:16px;margin-bottom:28px;">
-    <a href="{{ url_for('admin_products') }}" style="color:var(--mid-gray);font-size:13px;">
-        <i class="fas fa-arrow-left"></i> Back to Products
-    </a>
-    <h1 class="admin-page-title" style="margin-bottom:0;">
-        {{ 'Edit Product' if action == 'edit' else 'Add New Product' }}
-    </h1>
+<div class="product-detail-section">
+    <!-- Gallery -->
+    <div class="product-gallery">
+        <div class="product-main-img">
+            <img src="{% if product.image and product.image.startswith('http') %}{{ product.image }}{% elif product.image and not product.image.startswith('default') %}{{ url_for('static', filename='images/uploads/' + product.image) }}{% else %}{{ url_for('static', filename='images/default_product.png') }}{% endif %}" alt="{{ product.name }}" onerror="this.src='https://placehold.co/600x600/FAF7F2/C9868A?text=🎁'">
+        </div>
+    </div>
+
+    <!-- Info -->
+    <div class="product-detail-info">
+        <div class="breadcrumb">
+            <a href="{{ url_for('index') }}">{{ 'الرئيسية' if lang == 'ar' else 'Home' }}</a>
+            <span>/</span>
+            <a href="{{ url_for('products') }}">{{ 'المنتجات' if lang == 'ar' else 'Products' }}</a>
+            <span>/</span>
+            <span style="color:var(--charcoal);">{{ product.name_ar if lang == 'ar' and product.name_ar else product.name }}</span>
+        </div>
+
+        <div class="product-detail-category">{{ product.category }}</div>
+        <h1 class="product-detail-name">
+            {{ product.name_ar if lang == 'ar' and product.name_ar else product.name }}
+        </h1>
+
+        <!-- Rating -->
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;">
+            <div style="color:var(--gold);font-size:16px;">
+                {% set rating = avg_rating or 4.8 %}
+                {% for i in range(5) %}
+                <i class="fas fa-star{{ '' if i < rating|int else ('-half-alt' if (rating % 1) >= 0.5 else '') }}"
+                   style="color:{{ 'var(--gold)' if i < rating else '#ddd' }}"></i>
+                {% endfor %}
+            </div>
+            <span style="font-size:13px;color:var(--mid-gray);">({{ reviews|length }} {{ 'تقييم' if lang == 'ar' else 'reviews' }})</span>
+        </div>
+
+        <!-- Price -->
+        {% set price = product.price * (1 - product.discount_percent / 100) %}
+        <div style="display:flex;align-items:baseline;gap:14px;margin-bottom:8px;">
+            <div class="product-detail-price">{{ "%.3f"|format(price) }} BD</div>
+            {% if product.discount_percent > 0 %}
+            <span style="font-size:17px;color:var(--mid-gray);text-decoration:line-through;">{{ "%.3f"|format(product.price) }} BD</span>
+            <span style="background:#c0392b;color:#fff;font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;">-{{ product.discount_percent|int }}%</span>
+            {% endif %}
+        </div>
+        <div style="font-size:12px;color:var(--mid-gray);margin-bottom:24px;">
+            {{ 'شامل ضريبة القيمة المضافة' if lang == 'ar' else 'VAT included' }}
+        </div>
+
+        <!-- Description -->
+        <p class="product-detail-desc">
+            {{ product.description_ar if lang == 'ar' and product.description_ar else product.description }}
+        </p>
+
+        <!-- Add to Cart / Order Form -->
+        {% if product.category == 'magnets' %}
+        {# ══ MAGNETS: Upload photo + WhatsApp order ══ #}
+        <div style="background:linear-gradient(135deg,#f8f4ff,#fff8f0);border:1.5px solid var(--border);border-radius:12px;padding:24px;margin-bottom:16px;">
+
+            {% if options %}
+            <div style="margin-bottom:20px;">
+                <div class="option-label">{{ 'اختر الكمية' if lang == 'ar' else 'Select Quantity' }}</div>
+                <div class="options-grid" id="magnet-qty-grid">
+                    {% for opt in options %}
+                    <button type="button"
+                            class="option-btn {{ 'selected' if loop.first }}"
+                            data-value="{{ opt }}"
+                            onclick="selectMagnetQty(this, '{{ opt }}')">
+                        {{ opt }}
+                    </button>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+
+            <div style="margin-bottom:20px;">
+                <div class="option-label">📸 {{ 'ارفع صورتك' if lang == 'ar' else 'Upload Your Photo' }}</div>
+                <p style="font-size:12px;color:var(--mid-gray);margin-bottom:10px;">
+                    {{ 'سيتم إرسالها لنا عبر واتساب مع طلبك' if lang == 'ar' else 'It will be sent to us via WhatsApp with your order' }}
+                </p>
+                <div id="photo-drop"
+                     style="border:2px dashed var(--border);border-radius:10px;padding:24px;text-align:center;cursor:pointer;background:#fff;transition:border-color 0.2s;"
+                     onclick="document.getElementById('magnet-photo').click()"
+                     ondragover="event.preventDefault();this.style.borderColor='var(--burgundy)'"
+                     ondragleave="this.style.borderColor='var(--border)'"
+                     ondrop="handleMagnetDrop(event)">
+                    <input type="file" id="magnet-photo" accept="image/*" multiple style="display:none;" onchange="previewMagnetPhoto(this.files)">
+                    <div id="photo-preview-wrap" style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-bottom:8px;"></div>
+                    <i class="fas fa-cloud-upload-alt" style="font-size:28px;color:var(--mid-gray);display:block;margin-bottom:6px;"></i>
+                    <span id="photo-drop-label" style="font-size:13px;color:var(--mid-gray);">
+                        {{ 'اضغط أو اسحب صورتك هنا' if lang == 'ar' else 'Click or drag your photo here' }}
+                    </span>
+                </div>
+            </div>
+
+            <div style="margin-bottom:20px;">
+                <div class="option-label">{{ 'اسمك ورقم واتساب' if lang == 'ar' else 'Your Name & WhatsApp' }}</div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:8px;">
+                    <input type="text" id="magnet-name" class="form-control"
+                           placeholder="{{ 'اسمك' if lang == 'ar' else 'Your name' }}">
+                    <input type="tel" id="magnet-phone" class="form-control"
+                           placeholder="+973 XXXX XXXX">
+                </div>
+            </div>
+
+            <button onclick="orderMagnetWhatsapp()" class="btn-add-cart" style="width:100%;background:linear-gradient(135deg,#25D366,#128C7E);">
+                <i class="fab fa-whatsapp"></i>
+                {{ 'اطلب عبر واتساب' if lang == 'ar' else 'Order via WhatsApp' }}
+            </button>
+        </div>
+
+        <script>
+        let magnetQty   = '{{ options[0] if options else "10" }}';
+        let magnetFiles = [];
+
+        function selectMagnetQty(btn, val) {
+            magnetQty = val;
+            document.querySelectorAll('#magnet-qty-grid .option-btn').forEach(b => b.classList.remove('selected'));
+            btn.classList.add('selected');
+        }
+
+        function previewMagnetPhoto(files) {
+            magnetFiles = Array.from(files);
+            renderPreviews();
+            document.getElementById('photo-drop-label').textContent = magnetFiles.length + ' photo(s) selected';
+            document.getElementById('photo-drop').style.borderColor = 'var(--burgundy)';
+        }
+
+        function handleMagnetDrop(e) {
+            e.preventDefault();
+            document.getElementById('photo-drop').style.borderColor = 'var(--border)';
+            const files = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/'));
+            magnetFiles = files;
+            renderPreviews();
+            document.getElementById('photo-drop-label').textContent = files.length + ' photo(s) ready';
+        }
+
+        function renderPreviews() {
+            const wrap = document.getElementById('photo-preview-wrap');
+            wrap.innerHTML = '';
+            magnetFiles.forEach(f => {
+                const img = document.createElement('img');
+                img.style.cssText = 'width:60px;height:60px;object-fit:cover;border-radius:6px;border:2px solid var(--burgundy);';
+                const reader = new FileReader();
+                reader.onload = e => img.src = e.target.result;
+                reader.readAsDataURL(f);
+                wrap.appendChild(img);
+            });
+        }
+
+        function orderMagnetWhatsapp() {
+            const name  = document.getElementById('magnet-name').value.trim();
+            const phone = document.getElementById('magnet-phone').value.trim();
+            if (!name || !phone) {
+                alert('{{ "يرجى إدخال اسمك ورقم الواتساب" if lang == "ar" else "Please enter your name and WhatsApp number" }}');
+                return;
+            }
+            const productName = '{{ product.name_ar if lang == "ar" and product.name_ar else product.name }}';
+            const price       = '{{ "%.3f"|format(product.price * (1 - product.discount_percent/100)) }}';
+            const msg =
+                `🧲 طلب جديد — ${productName}
+` +
+                `━━━━━━━━━━━━━━
+` +
+                `👤 الاسم: ${name}
+` +
+                `📱 الواتساب: ${phone}
+` +
+                `🔢 الكمية: ${magnetQty}
+` +
+                `💰 السعر: ${price} BD
+` +
+                `━━━━━━━━━━━━━━
+` +
+                (magnetFiles.length > 0
+                    ? `📸 عدد الصور: ${magnetFiles.length} (سيتم إرسالها بعد هذه الرسالة)
+`
+                    : '') +
+                `
+{{ 'شكراً! سيتم التواصل معك قريباً.' if lang == "ar" else "Thank you! We will contact you soon." }}`;
+
+            window.open('https://wa.me/97334415700?text=' + encodeURIComponent(msg), '_blank');
+        }
+        </script>
+
+        {% else %}
+        {# ══ Normal products: standard add to cart ══ #}
+        <form action="{{ url_for('add_to_cart') }}" method="POST" class="add-to-cart-form">
+            <input type="hidden" name="product_id" value="{{ product.id }}">
+            <input type="hidden" name="option" id="selected-option" value="{{ options[0] if options else '' }}">
+
+            {% if options %}
+            <div>
+                <div class="option-label">{{ 'اختر الخيار' if lang == 'ar' else 'Select Option' }}</div>
+                <div class="options-grid">
+                    {% for opt in options %}
+                    <button type="button" class="option-btn {{ 'selected' if loop.first }}" data-value="{{ opt }}">
+                        {{ opt }}
+                    </button>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+
+            <div>
+                <div class="option-label">{{ 'الكمية' if lang == 'ar' else 'Quantity' }}</div>
+                <div class="qty-control">
+                    <button type="button" class="qty-btn" onclick="changeQty(-1)">−</button>
+                    <input type="number" name="quantity" id="qty-input" class="qty-input" value="1" min="1" max="99">
+                    <button type="button" class="qty-btn" onclick="changeQty(1)">+</button>
+                </div>
+            </div>
+
+            <button type="submit" class="btn-add-cart">
+                <i class="fas fa-shopping-bag"></i>
+                {{ 'أضف إلى السلة' if lang == 'ar' else 'Add to Cart' }}
+            </button>
+
+            <a href="{{ url_for('cart') }}" class="btn btn-outline" style="text-align:center;">
+                {{ 'عرض السلة' if lang == 'ar' else 'View Cart' }}
+            </a>
+        </form>
+        {% endif %}
+
+        <!-- Trust Badges -->
+        <div style="display:flex;gap:20px;margin-top:28px;padding-top:24px;border-top:1px solid var(--border);">
+            <div style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--mid-gray);">
+                <i class="fas fa-shield-alt" style="color:var(--gold);"></i>
+                {{ 'جودة مضمونة' if lang == 'ar' else 'Quality Guaranteed' }}
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--mid-gray);">
+                <i class="fas fa-truck" style="color:var(--gold);"></i>
+                {{ 'توصيل سريع' if lang == 'ar' else 'Fast Delivery' }}
+            </div>
+        </div>
+    </div>
 </div>
 
-<div style="display:grid;grid-template-columns:2fr 1fr;gap:24px;align-items:start;">
-    <div class="admin-card">
-        <form action="{{ url_for('admin_edit_product', product_id=product.id) if action == 'edit' else url_for('admin_add_product') }}"
-              method="POST" enctype="multipart/form-data">
-
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
-                <div class="form-group">
-                    <label>Product Name (English) *</label>
-                    <input type="text" name="name" class="form-control" required
-                           value="{{ product.name if product else '' }}" placeholder="e.g. Rose Gift Box">
-                </div>
-                <div class="form-group">
-                    <label>اسم المنتج (عربي)</label>
-                    <input type="text" name="name_ar" class="form-control"
-                           value="{{ product.name_ar if product else '' }}" placeholder="مثال: صندوق الورد" dir="rtl"
-                           style="font-family:'Noto Naskh Arabic',serif;text-align:right;">
-                </div>
-            </div>
-
-            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;">
-                <div class="form-group">
-                    <label>Price (BD) *</label>
-                    <input type="number" name="price" class="form-control" step="0.001" required
-                           value="{{ product.price if product else '' }}" placeholder="0.000">
-                </div>
-                <div class="form-group">
-                    <label>Discount %</label>
-                    <input type="number" name="discount_percent" class="form-control" step="0.1" min="0" max="100"
-                           value="{{ product.discount_percent if product else '0' }}" placeholder="0">
-                </div>
-                <div class="form-group">
-                    <label>Stock</label>
-                    <input type="number" name="stock" class="form-control" min="0"
-                           value="{{ product.stock if product else '100' }}">
-                </div>
-            </div>
-
-            <div class="form-group">
-                <label>Category *</label>
-                <select name="category" class="form-control" required>
-                    {% set cats = ['birthday', 'eid', 'ramadan', 'baby', 'special', 'wedding', 'graduation', 'corporate'] %}
-                    {% for cat in cats %}
-                    <option value="{{ cat }}" {{ 'selected' if product and product.category == cat }}>
-                        {{ cat|capitalize }}
-                    </option>
-                    {% endfor %}
-                </select>
-            </div>
-
-            <div class="form-group">
-                <label>Description (English)</label>
-                <textarea name="description" class="form-control" rows="3"
-                          placeholder="Describe the product...">{{ product.description if product else '' }}</textarea>
-            </div>
-
-            <div class="form-group">
-                <label>الوصف (عربي)</label>
-                <textarea name="description_ar" class="form-control" rows="3" dir="rtl"
-                          style="font-family:'Noto Naskh Arabic',serif;text-align:right;"
-                          placeholder="وصف المنتج بالعربية...">{{ product.description_ar if product else '' }}</textarea>
-            </div>
-
-            <div class="form-group">
-                <label>Customizable Options (comma-separated)</label>
-                <input type="text" name="customizable_options" class="form-control"
-                       value="{{ options if options else '' }}"
-                       placeholder="e.g. Red, Pink, White, Mixed">
-                <div style="font-size:11px;color:var(--mid-gray);margin-top:6px;">
-                    Separate options with commas. E.g.: Small, Medium, Large
-                </div>
-            </div>
-
-            <!-- ═══ MULTI-IMAGE SECTION ═══ -->
-            <div class="form-group">
-                <label style="font-weight:700;font-size:14px;">
-                    Product Images
-                    <span style="font-weight:400;color:var(--mid-gray);font-size:12px;">
-                        — Select multiple files at once
-                    </span>
-                </label>
-
-                {% if action == 'edit' and product and product.images %}
-                <!-- Existing gallery -->
-                <div style="margin-bottom:16px;">
-                    <div style="font-size:12px;color:var(--mid-gray);margin-bottom:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;">
-                        Current Images ({{ product.images|length }})
+<!-- Related Products -->
+{% if related %}
+<div style="background:var(--light-gray);padding:60px 0;">
+    <div class="section" style="padding-top:0;padding-bottom:0;">
+        <div class="section-heading">
+            <span class="eyebrow">{{ 'قد يعجبك أيضاً' if lang == 'ar' else 'You May Also Like' }}</span>
+            <h2>{{ 'منتجات مشابهة' if lang == 'ar' else 'Related Gifts' }}</h2>
+        </div>
+        <div class="product-grid">
+            {% for p in related %}
+            {% set rprice = p.price * (1 - p.discount_percent / 100) %}
+            <div class="product-card">
+                <div class="product-img-wrapper">
+                    <img src="{% if p.image and p.image.startswith('http') %}{{ p.image }}{% elif p.image and not p.image.startswith('default') %}{{ url_for('static', filename='images/uploads/' + p.image) }}{% else %}{{ url_for('static', filename='images/default_product.png') }}{% endif %}" alt="{{ p.name }}" onerror="this.src='https://placehold.co/400x400/FAF7F2/C9868A?text=🎁'">
+                    <div class="product-actions-overlay">
+                        <a href="{{ url_for('product_detail', product_id=p.id) }}" class="btn btn-outline" style="background:rgba(255,255,255,0.9);color:var(--burgundy);">
+                            {{ 'عرض' if lang == 'ar' else 'View' }}
+                        </a>
                     </div>
-                    <div style="display:flex;flex-wrap:wrap;gap:10px;">
-                        {% for img in product.images %}
-                        <div style="position:relative;display:inline-block;">
-                            <img src="{{ img.url }}"
-                                 style="width:90px;height:90px;object-fit:cover;border-radius:8px;border:2px solid var(--border);
-                                        {% if loop.first %}border-color:#C9868A;{% endif %}"
-                                 onerror="this.src='https://placehold.co/90x90/FAF7F2/C9868A?text=🎁'">
-                            {% if loop.first %}
-                            <span style="position:absolute;top:4px;left:4px;background:#C9868A;color:#fff;
-                                         font-size:9px;font-weight:700;padding:2px 6px;border-radius:4px;">MAIN</span>
-                            {% endif %}
-                            <!-- Delete button -->
-                            <form action="{{ url_for('admin_delete_product_image', image_id=img.id) }}"
-                                  method="POST"
-                                  onsubmit="return confirm('Remove this image?');"
-                                  style="position:absolute;top:-6px;right:-6px;margin:0;">
-                                <button type="submit"
-                                        style="width:22px;height:22px;border-radius:50%;border:none;
-                                               background:#c0392b;color:#fff;font-size:12px;
-                                               cursor:pointer;display:flex;align-items:center;
-                                               justify-content:center;padding:0;line-height:1;">
-                                    ×
-                                </button>
-                            </form>
-                        </div>
+                </div>
+                <div class="product-info">
+                    <div class="product-category">{{ p.category }}</div>
+                    <h3 class="product-name">
+                        <a href="{{ url_for('product_detail', product_id=p.id) }}">
+                            {{ p.name_ar if lang == 'ar' and p.name_ar else p.name }}
+                        </a>
+                    </h3>
+                    <div class="product-price-row">
+                        <span class="price">{{ "%.3f"|format(rprice) }} BD</span>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Reviews Section -->
+<div class="reviews-section" style="margin-top:60px;">
+    <div class="section-heading" style="text-align:left;">
+        <span class="eyebrow">{{ 'آراء العملاء' if lang == 'ar' else 'Customer Reviews' }}</span>
+        <h2 style="font-size:32px;">{{ 'التقييمات' if lang == 'ar' else 'Reviews' }}</h2>
+    </div>
+
+    {% if reviews %}
+    <div class="reviews-grid">
+        {% for review in reviews %}
+        <div class="review-card">
+            <div class="review-header">
+                <div class="review-avatar">{{ review.user_name[0].upper() }}</div>
+                <div>
+                    <div style="font-weight:600;font-size:14px;">{{ review.user_name }}</div>
+                    <div class="review-stars">
+                        {% for i in range(5) %}
+                        <i class="fas fa-star" style="color:{{ 'var(--gold)' if i < review.rating else '#ddd' }}"></i>
                         {% endfor %}
                     </div>
                 </div>
-                {% elif action == 'edit' and product and product.image and not product.image.startswith('default') %}
-                <!-- Legacy single image fallback -->
-                <div style="margin-bottom:16px;">
-                    <div style="font-size:12px;color:var(--mid-gray);margin-bottom:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;">
-                        Current Image
-                    </div>
-                    <img src="{{ product.image if product.image.startswith('http') else url_for('static', filename='images/uploads/' + product.image) }}"
-                         style="width:90px;height:90px;object-fit:cover;border-radius:8px;border:2px solid #C9868A;"
-                         onerror="this.src='https://placehold.co/90x90/FAF7F2/C9868A?text=🎁'">
-                </div>
-                {% endif %}
-
-                <!-- Upload dropzone -->
-                <div id="dropzone"
-                     style="border:2px dashed var(--border);border-radius:10px;padding:28px 20px;
-                            text-align:center;cursor:pointer;transition:all 0.25s;background:var(--warm-white);"
-                     onclick="document.getElementById('images-input').click();"
-                     ondragover="event.preventDefault();this.style.borderColor='#C9868A';this.style.background='#FDF3F0';"
-                     ondragleave="this.style.borderColor='var(--border)';this.style.background='var(--warm-white)';"
-                     ondrop="handleDrop(event);">
-
-                    <input type="file" id="images-input" name="images"
-                           accept="image/*" multiple style="display:none;"
-                           onchange="previewImages(this.files)">
-
-                    <i class="fas fa-cloud-upload-alt" style="font-size:32px;color:var(--mid-gray);display:block;margin-bottom:10px;"></i>
-                    <div style="font-weight:700;color:var(--charcoal);margin-bottom:4px;">
-                        Click to upload or drag & drop
-                    </div>
-                    <div style="font-size:12px;color:var(--mid-gray);">
-                        PNG, JPG, WebP — hold Ctrl/Cmd to select multiple
-                    </div>
-                </div>
-
-                <!-- Preview of newly selected images -->
-                <div id="new-preview" style="display:flex;flex-wrap:wrap;gap:10px;margin-top:12px;"></div>
             </div>
-            <!-- ═══ END MULTI-IMAGE ═══ -->
+            {% if review.comment %}
+            <p class="review-comment">"{{ review.comment }}"</p>
+            {% endif %}
+            <div class="review-date">{{ review.created_at.strftime("%Y-%m-%d") if review.created_at else "" }}</div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <p style="color:var(--mid-gray);">{{ 'لا توجد تقييمات بعد. كن أول من يقيّم!' if lang == 'ar' else 'No reviews yet. Be the first to review!' }}</p>
+    {% endif %}
 
-            <div style="display:flex;gap:12px;margin-top:8px;">
-                <button type="submit" class="btn btn-primary btn-lg">
-                    <i class="fas fa-save"></i>
-                    {{ 'Save Changes' if action == 'edit' else 'Add Product' }}
-                </button>
-                <a href="{{ url_for('admin_products') }}" class="btn btn-outline btn-lg">Cancel</a>
+    <!-- Review Form -->
+    {% if session.get('user_id') %}
+    <div class="review-form" style="margin-top:40px;">
+        <h3 style="font-family:var(--font-display);font-size:22px;color:var(--burgundy);margin-bottom:20px;">
+            {{ 'اكتب تقييمك' if lang == 'ar' else 'Write a Review' }}
+        </h3>
+        <form action="{{ url_for('add_review') }}" method="POST">
+            <input type="hidden" name="product_id" value="{{ product.id }}">
+            <input type="hidden" name="rating" id="rating-value" value="5">
+            <div class="form-group">
+                <label>{{ 'تقييمك' if lang == 'ar' else 'Your Rating' }}</label>
+                <div style="display:flex;gap:6px;font-size:28px;cursor:pointer;margin-bottom:8px;">
+                    {% for i in range(1, 6) %}
+                    <i class="fas fa-star star-input" data-rating="{{ i }}" style="color:var(--gold);"></i>
+                    {% endfor %}
+                </div>
             </div>
+            <div class="form-group">
+                <label>{{ 'تعليقك' if lang == 'ar' else 'Your Comment' }}</label>
+                <textarea name="comment" class="form-control" placeholder="{{ 'شاركنا تجربتك...' if lang == 'ar' else 'Share your experience...' }}"></textarea>
+            </div>
+            <button type="submit" class="btn btn-primary">
+                {{ 'إرسال التقييم' if lang == 'ar' else 'Submit Review' }}
+            </button>
         </form>
     </div>
-
-    <!-- Tips Card -->
-    <div class="admin-card">
-        <div class="admin-card-title">💡 Tips</div>
-        <div style="font-size:13px;color:var(--mid-gray);line-height:1.9;">
-            <p><strong>Images:</strong> Select multiple files at once (Ctrl+Click or Cmd+Click). First image becomes the main display image.</p>
-            <br>
-            <p><strong>Remove images:</strong> Click the × button on any image to delete it individually.</p>
-            <br>
-            <p><strong>Options:</strong> Add comma-separated choices like colors, sizes, or scents.</p>
-            <br>
-            <p><strong>Discount:</strong> Enter percentage (e.g., 10 for 10% off). Leave 0 for no discount.</p>
-            <br>
-            <p><strong>Arabic Name:</strong> Always add the Arabic name for bilingual support.</p>
-        </div>
-
-        {% if action == 'edit' and product %}
-        <div style="margin-top:24px;padding-top:20px;border-top:1px solid var(--border);">
-            <div style="font-size:12px;color:var(--mid-gray);margin-bottom:12px;">Danger Zone</div>
-            <form action="{{ url_for('admin_delete_product', product_id=product.id) }}" method="POST"
-                  onsubmit="return confirm('Permanently delete this product? This cannot be undone.');">
-                <button type="submit" class="btn btn-sm" style="background:#f8d7da;color:#721c24;border:1px solid #f5c6cb;width:100%;">
-                    <i class="fas fa-trash"></i> Delete This Product
-                </button>
-            </form>
-        </div>
-        {% endif %}
+    {% else %}
+    <div style="background:var(--light-gray);border-radius:8px;padding:24px;text-align:center;margin-top:32px;">
+        <p style="color:var(--mid-gray);margin-bottom:14px;">
+            {{ 'يجب تسجيل الدخول لكتابة تقييم' if lang == 'ar' else 'Please login to write a review' }}
+        </p>
+        <a href="{{ url_for('login') }}" class="btn btn-primary">
+            {{ 'تسجيل الدخول' if lang == 'ar' else 'Login' }}
+        </a>
     </div>
+    {% endif %}
 </div>
-
-<script>
-function previewImages(files) {
-    const container = document.getElementById('new-preview');
-    container.innerHTML = '';
-    Array.from(files).forEach((file, i) => {
-        const reader = new FileReader();
-        reader.onload = e => {
-            const wrap = document.createElement('div');
-            wrap.style.cssText = 'position:relative;display:inline-block;';
-            wrap.innerHTML = `
-                <img src="${e.target.result}"
-                     style="width:90px;height:90px;object-fit:cover;border-radius:8px;
-                            border:2px solid ${i === 0 ? '#C9868A' : 'var(--border)'};">
-                ${i === 0 ? '<span style="position:absolute;top:4px;left:4px;background:#C9868A;color:#fff;font-size:9px;font-weight:700;padding:2px 6px;border-radius:4px;">MAIN</span>' : ''}
-                <span style="position:absolute;bottom:4px;right:4px;background:rgba(0,0,0,0.55);color:#fff;font-size:9px;padding:1px 5px;border-radius:3px;">${i+1}</span>
-            `;
-            container.appendChild(wrap);
-        };
-        reader.readAsDataURL(file);
-    });
-    // Update dropzone text
-    const dz = document.getElementById('dropzone');
-    dz.querySelector('div').textContent = `${files.length} file${files.length > 1 ? 's' : ''} selected`;
-    dz.style.borderColor = '#C9868A';
-    dz.style.background  = '#FDF3F0';
-}
-
-function handleDrop(event) {
-    event.preventDefault();
-    const dz = document.getElementById('dropzone');
-    dz.style.borderColor = 'var(--border)';
-    dz.style.background  = 'var(--warm-white)';
-    const input = document.getElementById('images-input');
-    // Transfer dropped files to the input
-    const dt = new DataTransfer();
-    Array.from(event.dataTransfer.files)
-        .filter(f => f.type.startsWith('image/'))
-        .forEach(f => dt.items.add(f));
-    input.files = dt.files;
-    previewImages(input.files);
-}
-</script>
 
 {% endblock %}
