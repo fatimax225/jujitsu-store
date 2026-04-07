@@ -39,6 +39,9 @@
         <a href="{{ url_for('admin_offers') }}" class="{{ 'active' if 'offer' in request.endpoint }}">
             <i class="fas fa-tag"></i> Offers
         </a>
+        <a href="{{ url_for('admin_magnets') }}" class="{{ 'active' if 'magnet' in request.endpoint }}">
+            <i class="fas fa-magnet"></i> Magnets
+        </a>
     </div>
 
     <div class="admin-content">
