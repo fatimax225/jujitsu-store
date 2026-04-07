@@ -12,7 +12,7 @@
             </div>
             <h1>
                 {% if lang == 'ar' %}
-             {# هدايا <span>تُعبّر</span><br>عن مشاعرك
+              هدايا <span>تُعبّر</span><br>عن مشاعرك
                 #}
              <img src="{{ url_for('static', filename='images/image copy 2.png') }}" class="logo">
              {% else %}
@@ -187,8 +187,22 @@
             {% endfor %}
         </div>
     </div>
-</div>#}
+</div>
             
+
+<!-- CTA -->
+<section style="background:linear-gradient(135deg,var(--burgundy),#4A1525);padding:70px 24px;text-align:center;color:#fff;">
+    <p style="font-size:11px;letter-spacing:4px;text-transform:uppercase;color:var(--gold-light);margin-bottom:16px;">{{ 'تواصل معنا' if lang == 'ar' else 'Get In Touch' }}</p>
+    <h2 style="font-family:var(--font-display);font-size:clamp(28px,4vw,44px);margin-bottom:16px;">
+        {{ 'هل تحتاج هدية مخصصة؟' if lang == 'ar' else 'Need a Custom Gift?' }}
+    </h2>
+    <p style="opacity:0.8;max-width:440px;margin:0 auto 32px;font-size:15px;line-height:1.7;">
+        {{ 'تواصل معنا عبر واتساب لطلب هدايا مخصصة حسب رغبتك' if lang == 'ar' else 'Contact us on WhatsApp for fully customized gift orders just the way you want them' }}
+    </p>
+    <a href="https://wa.me/97334415700" target="_blank" class="btn btn-lg" style="background:var(--gold);color:#fff;border:none;">
+        <i class="fab fa-whatsapp"></i> {{ 'تواصل عبر واتساب' if lang == 'ar' else 'WhatsApp Us' }}
+    </a>
+</section>
 
 
 <!-- Magnets CTA Section -->
@@ -218,18 +232,5 @@
     </div>
 </section>
 
-<!-- CTA -->
-<section style="background:linear-gradient(135deg,var(--burgundy),#4A1525);padding:70px 24px;text-align:center;color:#fff;">
-    <p style="font-size:11px;letter-spacing:4px;text-transform:uppercase;color:var(--gold-light);margin-bottom:16px;">{{ 'تواصل معنا' if lang == 'ar' else 'Get In Touch' }}</p>
-    <h2 style="font-family:var(--font-display);font-size:clamp(28px,4vw,44px);margin-bottom:16px;">
-        {{ 'هل تحتاج هدية مخصصة؟' if lang == 'ar' else 'Need a Custom Gift?' }}
-    </h2>
-    <p style="opacity:0.8;max-width:440px;margin:0 auto 32px;font-size:15px;line-height:1.7;">
-        {{ 'تواصل معنا عبر واتساب لطلب هدايا مخصصة حسب رغبتك' if lang == 'ar' else 'Contact us on WhatsApp for fully customized gift orders just the way you want them' }}
-    </p>
-    <a href="https://wa.me/97334415700" target="_blank" class="btn btn-lg" style="background:var(--gold);color:#fff;border:none;">
-        <i class="fab fa-whatsapp"></i> {{ 'تواصل عبر واتساب' if lang == 'ar' else 'WhatsApp Us' }}
-    </a>
-</section>
-
+{% endblock %}
 {% endblock %}
