@@ -8,16 +8,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;600;700&family=Jost:wght@300;400;500;600&family=Noto+Naskh+Arabic:wght@400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
-    {% block extra_css %}  {% endblock %}
-    <!-- Google tag (gtag.js) -->
-<script async src="https://www.googletagmanager.com/gtag/js?id=G-CEBSG51VCN"></script>
-<script>
-  window.dataLayer = window.dataLayer || [];
-  function gtag(){dataLayer.push(arguments);}
-  gtag('js', new Date());
-
-  gtag('config', 'G-CEBSG51VCN');
-</script>  
+    {% block extra_css %}{% endblock %}
 </head>
 <body class="lang-{{ lang }}">
 
@@ -39,6 +30,9 @@
             <a href="{{ url_for('products') }}">{{ 'المنتجات' if lang == 'ar' else 'Shop' }}</a>
             <a href="{{ url_for('about') }}">{{ 'عن المتجر' if lang == 'ar' else 'About' }}</a>
             <a href="{{ url_for('contact') }}">{{ 'تواصل معنا' if lang == 'ar' else 'Contact' }}</a>
+            <a href="{{ url_for('magnets') }}" style="color:var(--burgundy);font-weight:600;">
+                🧲 {{ 'مغناطيس' if lang == 'ar' else 'Magnets' }}
+            </a>
         </div>
 
         <div class="nav-actions">
@@ -86,6 +80,7 @@
         <a href="{{ url_for('products') }}">{{ 'المنتجات' if lang == 'ar' else 'Shop' }}</a>
         <a href="{{ url_for('about') }}">{{ 'عن المتجر' if lang == 'ar' else 'About' }}</a>
         <a href="{{ url_for('contact') }}">{{ 'تواصل معنا' if lang == 'ar' else 'Contact' }}</a>
+        <a href="{{ url_for('magnets') }}" style="color:var(--burgundy);font-weight:600;">🧲 {{ 'مغناطيس' if lang == 'ar' else 'Magnets' }}</a>
         {% if not session.get('user_id') %}
         <a href="{{ url_for('login') }}">{{ 'تسجيل الدخول' if lang == 'ar' else 'Login' }}</a>
         <a href="{{ url_for('register') }}">{{ 'إنشاء حساب' if lang == 'ar' else 'Register' }}</a>
@@ -129,6 +124,9 @@
             <a href="{{ url_for('products') }}">{{ 'تسوّق الآن' if lang == 'ar' else 'Shop Now' }}</a>
             <a href="{{ url_for('about') }}">{{ 'عن المتجر' if lang == 'ar' else 'About Us' }}</a>
             <a href="{{ url_for('contact') }}">{{ 'تواصل معنا' if lang == 'ar' else 'Contact' }}</a>
+            <a href="{{ url_for('magnets') }}" style="color:var(--burgundy);font-weight:600;">
+                🧲 {{ 'مغناطيس' if lang == 'ar' else 'Magnets' }}
+            </a>
         </div>
         <div class="footer-col">
             <h4>{{ 'الفئات' if lang == 'ar' else 'Categories' }}</h4>
