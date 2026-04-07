@@ -190,6 +190,33 @@
 </div>#}
             
 
+<!-- Magnets CTA Section -->
+<section style="background:linear-gradient(135deg,#1a1a2e,#0f3460);padding:60px 24px;text-align:center;color:#fff;">
+    <div style="max-width:600px;margin:0 auto;">
+        <div style="font-size:52px;margin-bottom:12px;">🧲</div>
+        <p style="font-size:11px;letter-spacing:4px;text-transform:uppercase;color:rgba(255,255,255,0.5);margin-bottom:12px;">NEW</p>
+        <h2 style="font-family:var(--font-display);font-size:clamp(26px,4vw,40px);margin-bottom:14px;">
+            {{ 'مغناطيس صور مخصصة' if lang == 'ar' else 'Custom Photo Magnets' }}
+        </h2>
+        <p style="opacity:0.75;font-size:15px;line-height:1.7;margin-bottom:28px;">
+            {{ 'ارفع صورك واحصل على مغناطيس عالي الجودة 5×5 سم — ابتداءً من 5 دينار' if lang == 'ar' else 'Upload your photos and get premium 5×5cm magnets — starting from 5 BD' }}
+        </p>
+        <div style="display:flex;justify-content:center;gap:16px;flex-wrap:wrap;margin-bottom:24px;">
+            {% for qty, price in [('10', '5.000'), ('25', '9.500'), ('50', '16.000')] %}
+            <div style="background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);border-radius:12px;padding:14px 22px;text-align:center;">
+                <div style="font-family:var(--font-display);font-size:28px;font-weight:700;">{{ qty }}</div>
+                <div style="font-size:11px;opacity:0.6;margin:2px 0;">{{ 'مغناطيس' if lang == 'ar' else 'Magnets' }}</div>
+                <div style="font-size:16px;font-weight:700;color:#FFD700;">{{ price }} BD</div>
+            </div>
+            {% endfor %}
+        </div>
+        <a href="{{ url_for('magnets') }}" class="btn btn-lg"
+           style="background:#FFD700;color:#1a1a2e;border:none;font-weight:700;">
+            🧲 {{ 'اطلب الآن' if lang == 'ar' else 'Order Now' }}
+        </a>
+    </div>
+</section>
+
 <!-- CTA -->
 <section style="background:linear-gradient(135deg,var(--burgundy),#4A1525);padding:70px 24px;text-align:center;color:#fff;">
     <p style="font-size:11px;letter-spacing:4px;text-transform:uppercase;color:var(--gold-light);margin-bottom:16px;">{{ 'تواصل معنا' if lang == 'ar' else 'Get In Touch' }}</p>
@@ -203,5 +230,7 @@
         <i class="fab fa-whatsapp"></i> {{ 'تواصل عبر واتساب' if lang == 'ar' else 'WhatsApp Us' }}
     </a>
 </section>
+
+{% endblock %}
 
 {% endblock %}
