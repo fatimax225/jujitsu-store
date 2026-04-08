@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% block title %}{{ 'تأكيد الطلب' if lang == 'ar' else 'Order Confirmed' }} | Jujita{% endblock %}
+{% block content %}
+<div class="confirmation-section">
+    <div class="confirmation-icon">{% if order.upload_later %}📱{% else %}📸{% endif %}</div>
+    <h1 style="font-family:var(--font-display);font-size:36px;color:var(--burgundy);margin-bottom:10px;">
+        {{ 'تم استلام طلبك!' if lang == 'ar' else 'Order Received!' }}
+    </h1>
+    <p style="color:var(--mid-gray);margin-bottom:8px;">
+        {{ 'شكراً' if lang == 'ar' else 'Thank you,' }} <strong>{{ order.customer_name }}</strong>!
+    </p>
+    <div style="display:inline-block;background:var(--light-gray);border-radius:20px;padding:8px 20px;
+                font-size:14px;font-weight:600;color:var(--burgundy);margin-bottom:28px;">
+        {{ 'رقم الطلب:' if lang == 'ar' else 'Order #' }} {{ order.order_ref }}
+    </div>
+
+    <div class="payment-box" style="text-align:left;">
+        <h3 style="font-family:var(--font-display);font-size:22px;color:var(--gold-light);margin-bottom:18px;">
+            <i class="fas fa-credit-card" style="margin-right:10px;"></i>
+            {{ 'تعليمات الدفع' if lang == 'ar' else 'Payment Instructions' }}
+        </h3>
+        <div class="payment-detail">
+            <i class="fas fa-images"></i>
+            <div>
+                <div style="font-size:12px;opacity:0.7;">{{ 'الكمية' if lang == 'ar' else 'Quantity' }}</div>
+                <strong style="font-size:20px;">{{ order.quantity }} {{ 'قطعة' if lang == 'ar' else 'pcs' }}</strong>
+            </div>
+        </div>
+        <div class="payment-detail">
+            <i class="fas fa-coins"></i>
+            <div>
+                <div style="font-size:12px;opacity:0.7;">{{ 'المبلغ' if lang == 'ar' else 'Amount' }}</div>
+                <strong style="font-size:26px;">{{ "%.3f"|format(order.price_bd) }} BD</strong>
+            </div>
+        </div>
+        <div class="payment-detail">
+            <i class="fas fa-mobile-alt"></i>
+            <div>
+                <div style="font-size:12px;opacity:0.7;">BenefitPay</div>
+                <strong style="font-size:22px;">34415700</strong>
+            </div>
+        </div>
+    </div>
+
+    {% if order.upload_later %}
+    <div style="background:#e8f5e9;border:1px solid #c8e6c9;border-radius:10px;padding:20px;margin:20px 0;text-align:left;">
+        <div style="font-weight:700;color:#2e7d32;margin-bottom:8px;">
+            <i class="fab fa-whatsapp" style="color:#25D366;margin-right:8px;"></i>
+            {{ 'سيتم التواصل معك على واتساب لإرسال الصور' if lang == 'ar' else 'We will contact you on WhatsApp to receive your photos' }}
+        </div>
+        <div style="font-size:13px;color:#388e3c;">
+            {{ 'رقمك:' if lang == 'ar' else 'Your number:' }} <strong>{{ order.customer_phone }}</strong>
+        </div>
+    </div>
+    {% else %}
+    {% if order.images_list %}
+    <div style="margin:20px 0;text-align:left;">
+        <p style="font-size:13px;font-weight:600;margin-bottom:10px;">
+            ✅ {{ order.images_list|length }} {{ 'صورة تم رفعها' if lang == 'ar' else 'photos uploaded' }}
+        </p>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;">
+            {% for url in order.images_list %}
+            <img src="{{ url }}" style="width:60px;height:60px;object-fit:cover;border-radius:8px;border:2px solid var(--border);">
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+    {% endif %}
+
+    <div style="display:flex;gap:16px;justify-content:center;flex-wrap:wrap;margin-top:24px;">
+        <a href="{{ url_for('products') }}" class="btn btn-primary">
+            {{ 'تسوق أكثر' if lang == 'ar' else 'Continue Shopping' }}
+        </a>
+        <a href="{{ url_for('index') }}" class="btn btn-outline">
+            {{ 'الرئيسية' if lang == 'ar' else 'Home' }}
+        </a>
+    </div>
+</div>
+{% endblock %}
