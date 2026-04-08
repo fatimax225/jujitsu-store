@@ -2,7 +2,7 @@
 {% block title %}Photo Orders{% endblock %}
 {% block content %}
 
-<h1 class="admin-page-title">📸 Photo Print & Magnet Orders</h1>
+<h1 class="admin-page-title">📸 Photo Orders</h1>
 
 <div class="admin-card">
     {% if orders %}
@@ -12,7 +12,6 @@
                 <th>Ref #</th>
                 <th>Customer</th>
                 <th>Phone</th>
-                <th>Details</th>
                 <th>Qty</th>
                 <th>Price</th>
                 <th>Photos</th>
@@ -24,10 +23,12 @@
             {% for order in orders %}
             <tr>
                 <td><strong style="color:var(--burgundy);">{{ order.order_ref }}</strong></td>
-                <td><strong>{{ order.customer_name }}</strong>
-                    {% if order.customer_notes %}
-                    <div style="font-size:11px;color:var(--mid-gray);max-width:150px;overflow:hidden;text-overflow:ellipsis;">{{ order.customer_notes }}</div>
+                <td>
+                    <strong>{{ order.customer_name }}</strong>
+                    {% if order.upload_later %}
+                    <div style="font-size:11px;color:#795548;">📱 Upload via WhatsApp</div>
                     {% endif %}
+                    {% if order.notes %}<div style="font-size:11px;color:var(--mid-gray);">{{ order.notes }}</div>{% endif %}
                 </td>
                 <td>
                     <a href="https://wa.me/973{{ order.customer_phone|replace(' ','')|replace('+','') }}"
@@ -35,18 +36,7 @@
                         <i class="fab fa-whatsapp"></i> {{ order.customer_phone }}
                     </a>
                 </td>
-                <td style="font-size:12px;">
-                    {% if order.upload_later %}
-                    <span style="background:#fff8e1;color:#795548;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600;">
-                        📱 Upload via WA
-                    </span>
-                    {% else %}
-                    <span style="background:#e8f5e9;color:#2e7d32;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600;">
-                        ✅ Uploaded
-                    </span>
-                    {% endif %}
-                </td>
-                <td><strong>{{ order.quantity }}</strong></td>
+                <td><strong>{{ order.qty_label or order.qty_num }}</strong></td>
                 <td><strong>{{ "%.3f"|format(order.price_bd) }} BD</strong></td>
                 <td>
                     {% if order.images_list %}
@@ -59,7 +49,7 @@
                     </div>
                     <div style="font-size:10px;color:var(--mid-gray);margin-top:2px;">{{ order.images_list|length }} photo(s)</div>
                     {% else %}
-                    <span style="color:var(--mid-gray);font-size:12px;">—</span>
+                    <span style="color:var(--mid-gray);font-size:12px;">{{ 'Pending upload' if order.upload_later else '—' }}</span>
                     {% endif %}
                 </td>
                 <td>
@@ -68,9 +58,7 @@
                                 style="font-size:12px;padding:4px 8px;height:auto;"
                                 onchange="this.form.submit()">
                             {% for s in ['pending','processing','printing','completed','cancelled'] %}
-                            <option value="{{ s }}" {{ 'selected' if order.status == s }}>
-                                {{ s|replace('_',' ')|title }}
-                            </option>
+                            <option value="{{ s }}" {{ 'selected' if order.status == s }}>{{ s|replace('_',' ')|title }}</option>
                             {% endfor %}
                         </select>
                     </form>
