@@ -1,274 +1,444 @@
 {% extends "base.html" %}
 {% block title %}{{ product.name }} | Jujita Shop{% endblock %}
+ 
+{% block extra_css %}
+<style>
+/* ── Gallery ── */
+.gallery-main {
+    position:relative;border-radius:12px;overflow:hidden;
+    border:1px solid var(--border);background:var(--light-gray);aspect-ratio:1;
+}
+.gallery-main img {
+    width:100%;height:100%;object-fit:cover;display:block;transition:opacity 0.25s;
+}
+.gallery-arrow {
+    position:absolute;top:50%;transform:translateY(-50%);
+    background:rgba(255,255,255,0.88);border:none;border-radius:50%;
+    width:38px;height:38px;font-size:18px;cursor:pointer;
+    display:flex;align-items:center;justify-content:center;
+    box-shadow:0 2px 10px rgba(0,0,0,0.15);transition:background 0.2s;z-index:2;
+}
+.gallery-arrow:hover{background:#fff;}
+.gallery-arrow.left{left:10px;}
+.gallery-arrow.right{right:10px;}
+.gallery-dots{position:absolute;bottom:10px;left:50%;transform:translateX(-50%);display:flex;gap:6px;z-index:2;}
+.g-dot{width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,0.5);cursor:pointer;border:none;transition:all 0.25s;}
+.g-dot.active{background:#fff;transform:scale(1.3);}
+.thumb-strip{display:flex;gap:8px;margin-top:10px;overflow-x:auto;padding-bottom:4px;}
+.thumb-strip img{width:68px;height:68px;object-fit:cover;border-radius:8px;cursor:pointer;flex-shrink:0;border:2.5px solid var(--border);opacity:0.65;transition:all 0.2s;}
+.thumb-strip img.active,.thumb-strip img:hover{border-color:var(--burgundy);opacity:1;}
+ 
+/* ── Photo order slots ── */
+.photo-slots{display:grid;grid-template-columns:repeat(auto-fill,minmax(90px,1fr));gap:10px;margin:12px 0;}
+.photo-slot{aspect-ratio:1;border:2px dashed var(--border);border-radius:10px;cursor:pointer;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    font-size:11px;color:var(--mid-gray);gap:4px;position:relative;overflow:hidden;background:#fafafa;transition:border-color 0.2s;}
+.photo-slot:hover{border-color:var(--burgundy);}
+.photo-slot img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;}
+.photo-slot .slot-num{position:absolute;top:3px;left:3px;background:var(--burgundy);color:#fff;
+    font-size:9px;font-weight:700;width:18px;height:18px;border-radius:50%;
+    display:flex;align-items:center;justify-content:center;z-index:2;}
+.photo-slot .slot-rm{position:absolute;top:3px;right:3px;background:rgba(220,53,69,0.85);color:#fff;
+    border:none;width:20px;height:20px;border-radius:50%;font-size:12px;cursor:pointer;
+    display:none;align-items:center;justify-content:center;z-index:2;}
+.photo-slot:hover .slot-rm{display:flex;}
+</style>
+{% endblock %}
+ 
 {% block content %}
-
 <div class="product-detail-section">
-    <!-- Gallery -->
+ 
+    <!-- ══ Gallery ══ -->
     <div class="product-gallery">
-        <div class="product-main-img">
-            <img src="{% if product.image and product.image.startswith('http') %}{{ product.image }}{% elif product.image and not product.image.startswith('default') %}{{ url_for('static', filename='images/uploads/' + product.image) }}{% else %}{{ url_for('static', filename='images/default_product.png') }}{% endif %}" alt="{{ product.name }}" onerror="this.src='https://placehold.co/600x600/FAF7F2/C9868A?text=🎁'">
+        {% set imgs = [] %}
+        {% if product.image and not product.image.startswith("default") %}
+            {% if product.image.startswith("http") %}{% set _ = imgs.append(product.image) %}
+            {% else %}{% set _ = imgs.append(url_for("static", filename="images/uploads/" + product.image)) %}{% endif %}
+        {% else %}{% set _ = imgs.append(url_for("static", filename="images/default_product.png")) %}{% endif %}
+        {% for gi in product_images %}{% set _ = imgs.append(gi.url) %}{% endfor %}
+ 
+        <div class="gallery-main" id="gal-main">
+            <img id="gal-img" src="{{ imgs[0] }}" alt="{{ product.name }}"
+                 onerror="this.src='https://placehold.co/600x600/FAF7F2/C9868A?text=🎁'">
+            {% if imgs|length > 1 %}
+            <button class="gallery-arrow left"  onclick="galMove(-1)">&#8249;</button>
+            <button class="gallery-arrow right" onclick="galMove(1)">&#8250;</button>
+            <div class="gallery-dots" id="gal-dots">
+                {% for i in range(imgs|length) %}
+                <button class="g-dot {{ 'active' if loop.first }}" onclick="galGo({{ loop.index0 }})"></button>
+                {% endfor %}
+            </div>
+            {% endif %}
         </div>
+ 
+        {% if imgs|length > 1 %}
+        <div class="thumb-strip" id="thumb-strip">
+            {% for src in imgs %}
+            <img src="{{ src }}" class="{{ 'active' if loop.first }}"
+                 onclick="galGo({{ loop.index0 }})"
+                 onerror="this.style.display='none'">
+            {% endfor %}
+        </div>
+        {% endif %}
+ 
+        <script>
+        const IMGS = {{ imgs|tojson }};
+        let CUR = 0;
+        const galImg   = document.getElementById("gal-img");
+        const galDots  = document.querySelectorAll(".g-dot");
+        const galThmbs = document.querySelectorAll("#thumb-strip img");
+        function galGo(i) {
+            CUR = (i + IMGS.length) % IMGS.length;
+            galImg.style.opacity = "0";
+            setTimeout(() => { galImg.src = IMGS[CUR]; galImg.style.opacity = "1"; }, 180);
+            galDots.forEach((d,j)  => d.classList.toggle("active", j===CUR));
+            galThmbs.forEach((t,j) => t.classList.toggle("active", j===CUR));
+            if (galThmbs[CUR]) galThmbs[CUR].scrollIntoView({behavior:"smooth",inline:"center"});
+        }
+        function galMove(d) { galGo(CUR+d); }
+        document.addEventListener("keydown", e => {
+            if (e.key==="ArrowLeft") galMove(-1);
+            if (e.key==="ArrowRight") galMove(1);
+        });
+        let tx=null;
+        document.getElementById("gal-main").addEventListener("touchstart",e=>{tx=e.touches[0].clientX;},{passive:true});
+        document.getElementById("gal-main").addEventListener("touchend",e=>{
+            if(tx===null)return;
+            const dx=e.changedTouches[0].clientX-tx;
+            if(Math.abs(dx)>40)galMove(dx<0?1:-1);
+            tx=null;
+        },{passive:true});
+        </script>
     </div>
-
-    <!-- Info -->
+ 
+    <!-- ══ Info ══ -->
     <div class="product-detail-info">
         <div class="breadcrumb">
             <a href="{{ url_for('index') }}">{{ 'الرئيسية' if lang == 'ar' else 'Home' }}</a>
-            <span>/</span>
-            <a href="{{ url_for('products') }}">{{ 'المنتجات' if lang == 'ar' else 'Products' }}</a>
-            <span>/</span>
-            <span style="color:var(--charcoal);">{{ product.name_ar if lang == 'ar' and product.name_ar else product.name }}</span>
+            <span>/</span><a href="{{ url_for('products') }}">{{ 'المنتجات' if lang == 'ar' else 'Products' }}</a>
+            <span>/</span><span style="color:var(--charcoal);">{{ product.name_ar if lang=='ar' and product.name_ar else product.name }}</span>
         </div>
-
+ 
         <div class="product-detail-category">{{ product.category }}</div>
-        <h1 class="product-detail-name">
-            {{ product.name_ar if lang == 'ar' and product.name_ar else product.name }}
-        </h1>
-
-        <!-- Rating -->
+        <h1 class="product-detail-name">{{ product.name_ar if lang=='ar' and product.name_ar else product.name }}</h1>
+ 
         <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;">
             <div style="color:var(--gold);font-size:16px;">
                 {% set rating = avg_rating or 4.8 %}
                 {% for i in range(5) %}
-                <i class="fas fa-star{{ '' if i < rating|int else ('-half-alt' if (rating % 1) >= 0.5 else '') }}"
-                   style="color:{{ 'var(--gold)' if i < rating else '#ddd' }}"></i>
+                <i class="fas fa-star" style="color:{{ 'var(--gold)' if i < rating else '#ddd' }}"></i>
                 {% endfor %}
             </div>
-            <span style="font-size:13px;color:var(--mid-gray);">({{ reviews|length }} {{ 'تقييم' if lang == 'ar' else 'reviews' }})</span>
+            <span style="font-size:13px;color:var(--mid-gray);">({{ reviews|length }} {{ 'تقييم' if lang=='ar' else 'reviews' }})</span>
         </div>
-
-        <!-- Price -->
+ 
         {% set price = product.price * (1 - product.discount_percent / 100) %}
         <div style="display:flex;align-items:baseline;gap:14px;margin-bottom:8px;">
-            <div class="product-detail-price">{{ "%.3f"|format(price) }} BD</div>
+            <div class="product-detail-price" id="display-price">{{ "%.3f"|format(price) }} BD</div>
             {% if product.discount_percent > 0 %}
             <span style="font-size:17px;color:var(--mid-gray);text-decoration:line-through;">{{ "%.3f"|format(product.price) }} BD</span>
             <span style="background:#c0392b;color:#fff;font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;">-{{ product.discount_percent|int }}%</span>
             {% endif %}
         </div>
-        <div style="font-size:12px;color:var(--mid-gray);margin-bottom:24px;">
-            {{ 'شامل ضريبة القيمة المضافة' if lang == 'ar' else 'VAT included' }}
-        </div>
-
-        <!-- Description -->
-        <p class="product-detail-desc">
-            {{ product.description_ar if lang == 'ar' and product.description_ar else product.description }}
-        </p>
-
-        <!-- Add to Cart / Order Form -->
-        {% if product.category == 'magnets' %}
-        {# ══ MAGNETS: Upload photo + WhatsApp order ══ #}
-        <div style="background:linear-gradient(135deg,#f8f4ff,#fff8f0);border:1.5px solid var(--border);border-radius:12px;padding:24px;margin-bottom:16px;">
-
+        <div style="font-size:12px;color:var(--mid-gray);margin-bottom:24px;">{{ 'شامل ضريبة القيمة المضافة' if lang=='ar' else 'VAT included' }}</div>
+ 
+        <p class="product-detail-desc">{{ product.description_ar if lang=='ar' and product.description_ar else product.description }}</p>
+ 
+        <!-- ══════════════════════════════════════════════
+             PHOTO PRINT / MAGNET CATEGORY
+        ══════════════════════════════════════════════ -->
+        {% if product.category in ['magnets', 'photo_print', 'photo print'] %}
+ 
+        <form action="{{ url_for('photo_order', product_id=product.id) }}" method="POST" enctype="multipart/form-data" id="photo-form">
+ 
+            <!-- Step 1: Quantity -->
             {% if options %}
             <div style="margin-bottom:20px;">
-                <div class="option-label">{{ 'اختر الكمية' if lang == 'ar' else 'Select Quantity' }}</div>
-                <div class="options-grid" id="magnet-qty-grid">
+                <div class="option-label">{{ 'اختر الكمية' if lang=='ar' else 'Select Quantity' }}</div>
+                <div class="options-grid" id="qty-grid">
                     {% for opt in options %}
-                    <button type="button"
-                            class="option-btn {{ 'selected' if loop.first }}"
-                            data-value="{{ opt }}"
-                            onclick="selectMagnetQty(this, '{{ opt }}')">
+                    <button type="button" class="option-btn {{ 'selected' if loop.first }}"
+                            data-value="{{ opt }}" onclick="selectPhotoQty(this, '{{ opt }}')">
                         {{ opt }}
                     </button>
                     {% endfor %}
                 </div>
+                <input type="hidden" name="quantity_label" id="qty-label-input" value="{{ options[0] if options else '' }}">
             </div>
             {% endif %}
-
+ 
+            <!-- Step 2: Photo upload slots OR upload later -->
             <div style="margin-bottom:20px;">
-                <div class="option-label">📸 {{ 'ارفع صورتك' if lang == 'ar' else 'Upload Your Photo' }}</div>
-                <p style="font-size:12px;color:var(--mid-gray);margin-bottom:10px;">
-                    {{ 'سيتم إرسالها لنا عبر واتساب مع طلبك' if lang == 'ar' else 'It will be sent to us via WhatsApp with your order' }}
-                </p>
-                <div id="photo-drop"
-                     style="border:2px dashed var(--border);border-radius:10px;padding:24px;text-align:center;cursor:pointer;background:#fff;transition:border-color 0.2s;"
-                     onclick="document.getElementById('magnet-photo').click()"
-                     ondragover="event.preventDefault();this.style.borderColor='var(--burgundy)'"
-                     ondragleave="this.style.borderColor='var(--border)'"
-                     ondrop="handleMagnetDrop(event)">
-                    <input type="file" id="magnet-photo" accept="image/*" multiple style="display:none;" onchange="previewMagnetPhoto(this.files)">
-                    <div id="photo-preview-wrap" style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-bottom:8px;"></div>
-                    <i class="fas fa-cloud-upload-alt" style="font-size:28px;color:var(--mid-gray);display:block;margin-bottom:6px;"></i>
-                    <span id="photo-drop-label" style="font-size:13px;color:var(--mid-gray);">
-                        {{ 'اضغط أو اسحب صورتك هنا' if lang == 'ar' else 'Click or drag your photo here' }}
+                <div class="option-label" style="display:flex;justify-content:space-between;align-items:center;">
+                    <span>📸 {{ 'الصور' if lang=='ar' else 'Photos' }}
+                        <span id="slot-counter" style="font-size:11px;font-weight:400;color:var(--mid-gray);">
+                            (0 / <span id="slot-max">{{ options[0]|replace(' pcs','')|replace('pcs','')|replace(' Pcs','')|int if options else 1 }}</span>)
+                        </span>
                     </span>
+                    <!-- Upload later toggle -->
+                    <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px;color:var(--mid-gray);">
+                        <input type="checkbox" id="upload-later-chk" onchange="toggleUploadLater(this)"
+                               style="width:14px;height:14px;accent-color:var(--burgundy);">
+                        {{ 'أرفع لاحقاً' if lang=='ar' else 'Upload later via WhatsApp' }}
+                    </label>
                 </div>
+ 
+                <!-- Photo slots grid -->
+                <div class="photo-slots" id="photo-slots"></div>
+                <input type="file" id="slot-file-input" accept="image/*" style="display:none;" onchange="handleSlotFile(this)">
+ 
+                <!-- Upload later notice -->
+                <div id="upload-later-notice" style="display:none;background:#fff8e1;border:1px solid #ffe082;border-radius:8px;padding:14px;font-size:13px;color:#795548;margin-top:8px;">
+                    <i class="fas fa-whatsapp" style="color:#25D366;margin-right:6px;"></i>
+                    {{ 'سنتواصل معك على واتساب وترسل الصور هناك' if lang=='ar' else 'We will contact you on WhatsApp and you can send the photos there' }}
+                </div>
+                <input type="hidden" name="upload_later" id="upload-later-val" value="0">
             </div>
-
+ 
+            <!-- Step 3: Contact -->
             <div style="margin-bottom:20px;">
-                <div class="option-label">{{ 'اسمك ورقم واتساب' if lang == 'ar' else 'Your Name & WhatsApp' }}</div>
+                <div class="option-label">{{ 'بياناتك' if lang=='ar' else 'Your Details' }}</div>
                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:8px;">
-                    <input type="text" id="magnet-name" class="form-control"
-                           placeholder="{{ 'اسمك' if lang == 'ar' else 'Your name' }}">
-                    <input type="tel" id="magnet-phone" class="form-control"
+                    <input type="text" name="name" class="form-control" required
+                           placeholder="{{ 'اسمك' if lang=='ar' else 'Your name' }}"
+                           value="{{ session.get('user_name', '') }}">
+                    <input type="tel" name="phone" class="form-control" required
                            placeholder="+973 XXXX XXXX">
                 </div>
+                <textarea name="notes" class="form-control" rows="2" style="margin-top:8px;"
+                          placeholder="{{ 'ملاحظات...' if lang=='ar' else 'Notes...' }}"></textarea>
             </div>
-
-            <button onclick="orderMagnetWhatsapp()" class="btn-add-cart" style="width:100%;background:linear-gradient(135deg,#25D366,#128C7E);">
-                <i class="fab fa-whatsapp"></i>
-                {{ 'اطلب عبر واتساب' if lang == 'ar' else 'Order via WhatsApp' }}
+ 
+            <!-- Submit -->
+            <button type="submit" id="photo-submit-btn" class="btn-add-cart"
+                    style="width:100%;background:linear-gradient(135deg,var(--burgundy),#4A1525);">
+                <i class="fas fa-paper-plane"></i>
+                {{ 'إرسال الطلب' if lang=='ar' else 'Place Order' }}
             </button>
-        </div>
-
+            <p style="font-size:11px;color:var(--mid-gray);text-align:center;margin-top:8px;">
+                {{ 'الدفع عبر BenefitPay: 34415700 بعد التأكيد' if lang=='ar' else 'Payment via BenefitPay: 34415700 after confirmation' }}
+            </p>
+        </form>
+ 
         <script>
-        let magnetQty   = '{{ options[0] if options else "10" }}';
-        let magnetFiles = [];
-
-        function selectMagnetQty(btn, val) {
-            magnetQty = val;
-            document.querySelectorAll('#magnet-qty-grid .option-btn').forEach(b => b.classList.remove('selected'));
-            btn.classList.add('selected');
+        // ── Photo order JS ─────────────────────────────────────────
+        const BASE_PRICE_PH = {{ "%.3f"|format(price) }};
+        const RAW_OPTS_PH   = {{ options|tojson }};
+        let phQtyLabel = RAW_OPTS_PH[0] || "";
+        let phQtyNum   = parseQtyNum(phQtyLabel);
+        let phFiles    = {};   // {slotIndex: File}
+        let activeSlot = null;
+ 
+        function parseQtyNum(s) { return parseInt((s+"").replace(/[^\d]/g,"")) || 0; }
+ 
+        function selectPhotoQty(btn, val) {
+            phQtyLabel = val;
+            phQtyNum   = parseQtyNum(val);
+            document.querySelectorAll("#qty-grid .option-btn").forEach(b=>b.classList.remove("selected"));
+            btn.classList.add("selected");
+            document.getElementById("qty-label-input").value = val;
+            document.getElementById("slot-max").textContent = phQtyNum || val;
+            phFiles = {};
+            buildSlots();
         }
-
-        function previewMagnetPhoto(files) {
-            magnetFiles = Array.from(files);
-            renderPreviews();
-            document.getElementById('photo-drop-label').textContent = magnetFiles.length + ' photo(s) selected';
-            document.getElementById('photo-drop').style.borderColor = 'var(--burgundy)';
+ 
+        function buildSlots() {
+            const grid = document.getElementById("photo-slots");
+            grid.innerHTML = "";
+            const n = phQtyNum || 1;
+            for (let i = 0; i < n; i++) {
+                const slot = document.createElement("div");
+                slot.className = "photo-slot";
+                slot.dataset.idx = i;
+                slot.onclick = () => openSlot(i);
+ 
+                const num = document.createElement("div");
+                num.className = "slot-num";
+                num.textContent = i+1;
+                slot.appendChild(num);
+ 
+                if (phFiles[i]) {
+                    const img = document.createElement("img");
+                    const reader = new FileReader();
+                    reader.onload = e => img.src = e.target.result;
+                    reader.readAsDataURL(phFiles[i]);
+                    slot.appendChild(img);
+                    const rm = document.createElement("button");
+                    rm.className = "slot-rm"; rm.type="button"; rm.textContent="×";
+                    rm.onclick = e => { e.stopPropagation(); delete phFiles[i]; buildSlots(); updateCounter(); };
+                    slot.appendChild(rm);
+                } else {
+                    const icon = document.createElement("i");
+                    icon.className = "fas fa-plus";
+                    icon.style.cssText = "font-size:20px;color:var(--mid-gray);";
+                    slot.appendChild(icon);
+                    const lbl = document.createElement("span");
+                    lbl.textContent = "Photo " + (i+1);
+                    slot.appendChild(lbl);
+                }
+                grid.appendChild(slot);
+            }
+            syncFilesInput();
+            updateCounter();
         }
-
-        function handleMagnetDrop(e) {
-            e.preventDefault();
-            document.getElementById('photo-drop').style.borderColor = 'var(--border)';
-            const files = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/'));
-            magnetFiles = files;
-            renderPreviews();
-            document.getElementById('photo-drop-label').textContent = files.length + ' photo(s) ready';
+ 
+        function openSlot(idx) {
+            activeSlot = idx;
+            const inp = document.getElementById("slot-file-input");
+            inp.value = "";
+            inp.click();
         }
-
-        function renderPreviews() {
-            const wrap = document.getElementById('photo-preview-wrap');
-            wrap.innerHTML = '';
-            magnetFiles.forEach(f => {
-                const img = document.createElement('img');
-                img.style.cssText = 'width:60px;height:60px;object-fit:cover;border-radius:6px;border:2px solid var(--burgundy);';
-                const reader = new FileReader();
-                reader.onload = e => img.src = e.target.result;
-                reader.readAsDataURL(f);
-                wrap.appendChild(img);
+ 
+        function handleSlotFile(inp) {
+            if (!inp.files[0] || activeSlot === null) return;
+            phFiles[activeSlot] = inp.files[0];
+            activeSlot = null;
+            buildSlots();
+        }
+ 
+        function syncFilesInput() {
+            // Remove old injected inputs
+            document.querySelectorAll(".ph-file-hidden").forEach(e=>e.remove());
+            const form = document.getElementById("photo-form");
+            Object.values(phFiles).forEach(f => {
+                const dt = new DataTransfer();
+                dt.items.add(f);
+                const inp = document.createElement("input");
+                inp.type = "file"; inp.name = "photos";
+                inp.style.display = "none";
+                inp.className = "ph-file-hidden";
+                inp.files = dt.files;
+                form.appendChild(inp);
             });
         }
-
-        function orderMagnetWhatsapp() {
-            const name  = document.getElementById('magnet-name').value.trim();
-            const phone = document.getElementById('magnet-phone').value.trim();
-            if (!name || !phone) {
-                alert('{{ "يرجى إدخال اسمك ورقم الواتساب" if lang == "ar" else "Please enter your name and WhatsApp number" }}');
-                return;
-            }
-            const productName = '{{ product.name_ar if lang == "ar" and product.name_ar else product.name }}';
-            const price       = '{{ "%.3f"|format(product.price * (1 - product.discount_percent/100)) }}';
-            const msg =
-                `🧲 طلب جديد — ${productName}
-` +
-                `━━━━━━━━━━━━━━
-` +
-                `👤 الاسم: ${name}
-` +
-                `📱 الواتساب: ${phone}
-` +
-                `🔢 الكمية: ${magnetQty}
-` +
-                `💰 السعر: ${price} BD
-` +
-                `━━━━━━━━━━━━━━
-` +
-                (magnetFiles.length > 0
-                    ? `📸 عدد الصور: ${magnetFiles.length} (سيتم إرسالها بعد هذه الرسالة)
-`
-                    : '') +
-                `
-{{ 'شكراً! سيتم التواصل معك قريباً.' if lang == "ar" else "Thank you! We will contact you soon." }}`;
-
-            window.open('https://wa.me/97334415700?text=' + encodeURIComponent(msg), '_blank');
+ 
+        function updateCounter() {
+            const n   = Object.keys(phFiles).length;
+            const max = phQtyNum || 1;
+            const upLater = document.getElementById("upload-later-chk").checked;
+            document.getElementById("slot-counter").innerHTML =
+                "(" + n + " / " + max + ")";
+            const ready = upLater || n === max;
+            const btn = document.getElementById("photo-submit-btn");
+            btn.style.opacity  = ready ? "1" : "0.55";
+            btn.style.cursor   = ready ? "pointer" : "not-allowed";
+            btn.disabled       = !ready;
         }
+ 
+        function toggleUploadLater(chk) {
+            const notice = document.getElementById("upload-later-notice");
+            const slots  = document.getElementById("photo-slots");
+            notice.style.display = chk.checked ? "block" : "none";
+            slots.style.opacity  = chk.checked ? "0.4" : "1";
+            slots.style.pointerEvents = chk.checked ? "none" : "auto";
+            document.getElementById("upload-later-val").value = chk.checked ? "1" : "0";
+            updateCounter();
+        }
+ 
+        // Init
+        buildSlots();
+        updateCounter();
         </script>
-
+ 
         {% else %}
-        {# ══ Normal products: standard add to cart ══ #}
+        <!-- ══ Normal products ══ -->
         <form action="{{ url_for('add_to_cart') }}" method="POST" class="add-to-cart-form">
             <input type="hidden" name="product_id" value="{{ product.id }}">
             <input type="hidden" name="option" id="selected-option" value="{{ options[0] if options else '' }}">
-
+ 
             {% if options %}
             <div>
-                <div class="option-label">{{ 'اختر الخيار' if lang == 'ar' else 'Select Option' }}</div>
+                <div class="option-label">{{ 'اختر الخيار' if lang=='ar' else 'Select Option' }}</div>
                 <div class="options-grid">
                     {% for opt in options %}
-                    <button type="button" class="option-btn {{ 'selected' if loop.first }}" data-value="{{ opt }}">
-                        {{ opt }}
-                    </button>
+                    <button type="button" class="option-btn {{ 'selected' if loop.first }}" data-value="{{ opt }}">{{ opt }}</button>
                     {% endfor %}
                 </div>
             </div>
             {% endif %}
-
+ 
             <div>
-                <div class="option-label">{{ 'الكمية' if lang == 'ar' else 'Quantity' }}</div>
+                <div class="option-label" style="display:flex;justify-content:space-between;">
+                    <span>{{ 'الكمية' if lang=='ar' else 'Quantity' }}</span>
+                    {% if product.stock <= 10 and product.stock > 0 %}
+                    <span style="font-size:11px;color:#c0392b;font-weight:600;">
+                        ⚠️ {{ 'متبقي' if lang=='ar' else 'Only' }} {{ product.stock }} {{ 'فقط' if lang=='ar' else 'left' }}
+                    </span>
+                    {% elif product.stock == 0 %}
+                    <span style="font-size:11px;color:#c0392b;font-weight:600;">❌ {{ 'نفذ المخزون' if lang=='ar' else 'Out of Stock' }}</span>
+                    {% endif %}
+                </div>
                 <div class="qty-control">
-                    <button type="button" class="qty-btn" onclick="changeQty(-1)">−</button>
-                    <input type="number" name="quantity" id="qty-input" class="qty-input" value="1" min="1" max="99">
-                    <button type="button" class="qty-btn" onclick="changeQty(1)">+</button>
+                    <button type="button" class="qty-btn" onclick="changeQty(-1)" {{ 'disabled' if product.stock==0 }}>−</button>
+                    <input type="number" name="quantity" id="qty-input" class="qty-input"
+                           value="{{ 1 if product.stock > 0 else 0 }}"
+                           min="1" max="{{ product.stock }}" {{ 'disabled' if product.stock==0 }}>
+                    <button type="button" class="qty-btn" onclick="changeQty(1)" {{ 'disabled' if product.stock==0 }}>+</button>
                 </div>
             </div>
-
+ 
+            {% if product.stock > 0 %}
             <button type="submit" class="btn-add-cart">
                 <i class="fas fa-shopping-bag"></i>
-                {{ 'أضف إلى السلة' if lang == 'ar' else 'Add to Cart' }}
+                {{ 'أضف إلى السلة' if lang=='ar' else 'Add to Cart' }}
             </button>
-
+            {% else %}
+            <button type="button" class="btn-add-cart" style="background:#aaa;cursor:not-allowed;" disabled>
+                <i class="fas fa-times-circle"></i>
+                {{ 'نفذ المخزون' if lang=='ar' else 'Out of Stock' }}
+            </button>
+            {% endif %}
+ 
             <a href="{{ url_for('cart') }}" class="btn btn-outline" style="text-align:center;">
-                {{ 'عرض السلة' if lang == 'ar' else 'View Cart' }}
+                {{ 'عرض السلة' if lang=='ar' else 'View Cart' }}
             </a>
         </form>
         {% endif %}
-
-        <!-- Trust Badges -->
+ 
+        <!-- Trust badges -->
         <div style="display:flex;gap:20px;margin-top:28px;padding-top:24px;border-top:1px solid var(--border);">
             <div style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--mid-gray);">
                 <i class="fas fa-shield-alt" style="color:var(--gold);"></i>
-                {{ 'جودة مضمونة' if lang == 'ar' else 'Quality Guaranteed' }}
+                {{ 'جودة مضمونة' if lang=='ar' else 'Quality Guaranteed' }}
             </div>
             <div style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--mid-gray);">
                 <i class="fas fa-truck" style="color:var(--gold);"></i>
-                {{ 'توصيل سريع' if lang == 'ar' else 'Fast Delivery' }}
+                {{ 'توصيل سريع' if lang=='ar' else 'Fast Delivery' }}
             </div>
         </div>
     </div>
 </div>
-
-<!-- Related Products -->
+ 
+<!-- Related -->
 {% if related %}
 <div style="background:var(--light-gray);padding:60px 0;">
     <div class="section" style="padding-top:0;padding-bottom:0;">
         <div class="section-heading">
-            <span class="eyebrow">{{ 'قد يعجبك أيضاً' if lang == 'ar' else 'You May Also Like' }}</span>
-            <h2>{{ 'منتجات مشابهة' if lang == 'ar' else 'Related Gifts' }}</h2>
+            <span class="eyebrow">{{ 'قد يعجبك أيضاً' if lang=='ar' else 'You May Also Like' }}</span>
+            <h2>{{ 'منتجات مشابهة' if lang=='ar' else 'Related Gifts' }}</h2>
         </div>
         <div class="product-grid">
             {% for p in related %}
-            {% set rprice = p.price * (1 - p.discount_percent / 100) %}
+            {% set rp = p.price*(1-p.discount_percent/100) %}
             <div class="product-card">
                 <div class="product-img-wrapper">
-                    <img src="{% if p.image and p.image.startswith('http') %}{{ p.image }}{% elif p.image and not p.image.startswith('default') %}{{ url_for('static', filename='images/uploads/' + p.image) }}{% else %}{{ url_for('static', filename='images/default_product.png') }}{% endif %}" alt="{{ p.name }}" onerror="this.src='https://placehold.co/400x400/FAF7F2/C9868A?text=🎁'">
+                    <img src="{{ image_url(p) or url_for('static',filename='images/default_product.png') }}"
+                         alt="{{ p.name }}" onerror="this.src='https://placehold.co/400x400/FAF7F2/C9868A?text=🎁'">
                     <div class="product-actions-overlay">
-                        <a href="{{ url_for('product_detail', product_id=p.id) }}" class="btn btn-outline" style="background:rgba(255,255,255,0.9);color:var(--burgundy);">
-                            {{ 'عرض' if lang == 'ar' else 'View' }}
+                        <a href="{{ url_for('product_detail',product_id=p.id) }}" class="btn btn-outline"
+                           style="background:rgba(255,255,255,0.9);color:var(--burgundy);">
+                            {{ 'عرض' if lang=='ar' else 'View' }}
                         </a>
                     </div>
                 </div>
                 <div class="product-info">
                     <div class="product-category">{{ p.category }}</div>
                     <h3 class="product-name">
-                        <a href="{{ url_for('product_detail', product_id=p.id) }}">
-                            {{ p.name_ar if lang == 'ar' and p.name_ar else p.name }}
+                        <a href="{{ url_for('product_detail',product_id=p.id) }}">
+                            {{ p.name_ar if lang=='ar' and p.name_ar else p.name }}
                         </a>
                     </h3>
-                    <div class="product-price-row">
-                        <span class="price">{{ "%.3f"|format(rprice) }} BD</span>
-                    </div>
+                    <div class="product-price-row"><span class="price">{{ "%.3f"|format(rp) }} BD</span></div>
                 </div>
             </div>
             {% endfor %}
@@ -276,14 +446,13 @@
     </div>
 </div>
 {% endif %}
-
-<!-- Reviews Section -->
+ 
+<!-- Reviews -->
 <div class="reviews-section" style="margin-top:60px;">
     <div class="section-heading" style="text-align:left;">
-        <span class="eyebrow">{{ 'آراء العملاء' if lang == 'ar' else 'Customer Reviews' }}</span>
-        <h2 style="font-size:32px;">{{ 'التقييمات' if lang == 'ar' else 'Reviews' }}</h2>
+        <span class="eyebrow">{{ 'آراء العملاء' if lang=='ar' else 'Customer Reviews' }}</span>
+        <h2 style="font-size:32px;">{{ 'التقييمات' if lang=='ar' else 'Reviews' }}</h2>
     </div>
-
     {% if reviews %}
     <div class="reviews-grid">
         {% for review in reviews %}
@@ -294,58 +463,50 @@
                     <div style="font-weight:600;font-size:14px;">{{ review.user_name }}</div>
                     <div class="review-stars">
                         {% for i in range(5) %}
-                        <i class="fas fa-star" style="color:{{ 'var(--gold)' if i < review.rating else '#ddd' }}"></i>
+                        <i class="fas fa-star" style="color:{{ 'var(--gold)' if i<review.rating else '#ddd' }}"></i>
                         {% endfor %}
                     </div>
                 </div>
             </div>
-            {% if review.comment %}
-            <p class="review-comment">"{{ review.comment }}"</p>
-            {% endif %}
+            {% if review.comment %}<p class="review-comment">"{{ review.comment }}"</p>{% endif %}
             <div class="review-date">{{ review.created_at.strftime("%Y-%m-%d") if review.created_at else "" }}</div>
         </div>
         {% endfor %}
     </div>
     {% else %}
-    <p style="color:var(--mid-gray);">{{ 'لا توجد تقييمات بعد. كن أول من يقيّم!' if lang == 'ar' else 'No reviews yet. Be the first to review!' }}</p>
+    <p style="color:var(--mid-gray);">{{ 'لا توجد تقييمات بعد.' if lang=='ar' else 'No reviews yet.' }}</p>
     {% endif %}
-
-    <!-- Review Form -->
+ 
     {% if session.get('user_id') %}
     <div class="review-form" style="margin-top:40px;">
         <h3 style="font-family:var(--font-display);font-size:22px;color:var(--burgundy);margin-bottom:20px;">
-            {{ 'اكتب تقييمك' if lang == 'ar' else 'Write a Review' }}
+            {{ 'اكتب تقييمك' if lang=='ar' else 'Write a Review' }}
         </h3>
         <form action="{{ url_for('add_review') }}" method="POST">
             <input type="hidden" name="product_id" value="{{ product.id }}">
             <input type="hidden" name="rating" id="rating-value" value="5">
             <div class="form-group">
-                <label>{{ 'تقييمك' if lang == 'ar' else 'Your Rating' }}</label>
+                <label>{{ 'تقييمك' if lang=='ar' else 'Your Rating' }}</label>
                 <div style="display:flex;gap:6px;font-size:28px;cursor:pointer;margin-bottom:8px;">
-                    {% for i in range(1, 6) %}
+                    {% for i in range(1,6) %}
                     <i class="fas fa-star star-input" data-rating="{{ i }}" style="color:var(--gold);"></i>
                     {% endfor %}
                 </div>
             </div>
             <div class="form-group">
-                <label>{{ 'تعليقك' if lang == 'ar' else 'Your Comment' }}</label>
-                <textarea name="comment" class="form-control" placeholder="{{ 'شاركنا تجربتك...' if lang == 'ar' else 'Share your experience...' }}"></textarea>
+                <label>{{ 'تعليقك' if lang=='ar' else 'Your Comment' }}</label>
+                <textarea name="comment" class="form-control" placeholder="{{ 'شاركنا تجربتك...' if lang=='ar' else 'Share your experience...' }}"></textarea>
             </div>
-            <button type="submit" class="btn btn-primary">
-                {{ 'إرسال التقييم' if lang == 'ar' else 'Submit Review' }}
-            </button>
+            <button type="submit" class="btn btn-primary">{{ 'إرسال التقييم' if lang=='ar' else 'Submit Review' }}</button>
         </form>
     </div>
     {% else %}
     <div style="background:var(--light-gray);border-radius:8px;padding:24px;text-align:center;margin-top:32px;">
         <p style="color:var(--mid-gray);margin-bottom:14px;">
-            {{ 'يجب تسجيل الدخول لكتابة تقييم' if lang == 'ar' else 'Please login to write a review' }}
+            {{ 'يجب تسجيل الدخول لكتابة تقييم' if lang=='ar' else 'Please login to write a review' }}
         </p>
-        <a href="{{ url_for('login') }}" class="btn btn-primary">
-            {{ 'تسجيل الدخول' if lang == 'ar' else 'Login' }}
-        </a>
+        <a href="{{ url_for('login') }}" class="btn btn-primary">{{ 'تسجيل الدخول' if lang=='ar' else 'Login' }}</a>
     </div>
     {% endif %}
 </div>
-
 {% endblock %}
