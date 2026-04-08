@@ -51,7 +51,7 @@
             <div class="form-group">
                 <label>Category *</label>
                 <select name="category" class="form-control" required>
-                    {% set cats = ['birthday', 'eid', 'ramadan', 'baby', 'special', 'wedding', 'graduation', 'corporate'] %}
+                    {% set cats = ['birthday', 'eid', 'ramadan', 'baby', 'special', 'wedding', 'graduation', 'corporate', 'magnets'] %}
                     {% for cat in cats %}
                     <option value="{{ cat }}" {{ 'selected' if product and product.category == cat }}>
                         {{ cat|capitalize }}
