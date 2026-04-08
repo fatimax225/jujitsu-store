@@ -193,9 +193,10 @@ class MagnetOrder(db.Model):
     customer_name  = db.Column(db.String(150), nullable=False)
     customer_phone = db.Column(db.String(30),  nullable=False)
     customer_notes = db.Column(db.Text)
-    quantity       = db.Column(db.Integer, nullable=False)   # 10 / 25 / 50
+    quantity       = db.Column(db.Integer, nullable=False)
     price_bd       = db.Column(db.Float,   nullable=False)
-    images_json    = db.Column(db.Text)    # JSON list of Cloudinary URLs
+    images_json    = db.Column(db.Text)
+    upload_later   = db.Column(db.Boolean, default=False)
     status         = db.Column(db.String(40), default='pending')
     created_at     = db.Column(db.DateTime, default=datetime.utcnow)
 
@@ -281,7 +282,19 @@ def inject_cart_count():
     cart  = session.get('cart', {})
     count = sum(item.get('quantity', 1) for item in cart.values())
     lang  = session.get('lang', 'en')
-    return dict(cart_count=count, lang=lang)
+
+    def image_url(product):
+        if hasattr(product, 'images') and product.images:
+            return product.images[0].url
+        img = product.image if product else None
+        if not img or img.startswith('default'):
+            return None
+        if img.startswith('http'):
+            return img
+        from flask import url_for as _uf
+        return _uf('static', filename='images/uploads/' + img)
+
+    return dict(cart_count=count, lang=lang, image_url=image_url)
  
  
 def _build_cart(cart_session):
@@ -431,12 +444,33 @@ def add_to_cart():
     qty    = int(request.form.get('quantity', 1))
     option = request.form.get('option', '')
     cart   = session.get('cart', {})
+
+    product = Product.query.get(int(pid))
+    if not product:
+        flash('Product not found.', 'error')
+        return redirect(request.referrer or url_for('products'))
+
+    if product.stock <= 0:
+        flash(f'Sorry, "{product.name}" is out of stock.', 'error')
+        return redirect(request.referrer or url_for('products'))
+
+    in_cart = cart.get(pid, {}).get('quantity', 0)
+    if in_cart + qty > product.stock:
+        avail = product.stock - in_cart
+        if avail <= 0:
+            flash(f'You already have the max available ({product.stock}) in your cart.', 'error')
+            session['cart'] = cart
+            return redirect(request.referrer or url_for('products'))
+        qty = avail
+        flash(f'Only {avail} available. Added {avail} to cart.', 'error')
+
     if pid in cart:
         cart[pid]['quantity'] += qty
     else:
         cart[pid] = {'quantity': qty, 'option': option}
     session['cart'] = cart
-    flash('Item added to cart!', 'success')
+    if qty > 0:
+        flash('Item added to cart!', 'success')
     return redirect(request.referrer or url_for('products'))
  
  
@@ -449,6 +483,10 @@ def update_cart():
         if qty <= 0:
             del cart[pid]
         else:
+            product = Product.query.get(int(pid))
+            if product and qty > product.stock:
+                qty = product.stock
+                flash(f'Capped at available stock ({product.stock}).', 'error')
             cart[pid]['quantity'] = qty
     session['cart'] = cart
     return redirect(url_for('cart'))
@@ -579,58 +617,78 @@ def add_review():
  
  
 # ══════════════════════════════════════════════════════════════════════
-#  Magnets Custom Order
+#  Photo Print / Magnets Orders
 # ══════════════════════════════════════════════════════════════════════
-MAGNET_PRICES = {10: 5.000, 25: 9.500, 50: 16.000}   # BD prices
+@app.route('/photo-order/<int:product_id>', methods=['POST'])
+def photo_order(product_id):
+    """Handle photo print / magnet orders submitted from product page."""
+    product     = Product.query.get_or_404(product_id)
+    name        = request.form.get('name', '').strip()
+    phone       = request.form.get('phone', '').strip()
+    notes       = request.form.get('notes', '')
+    qty_label   = request.form.get('quantity_label', '')
+    upload_later= request.form.get('upload_later') == '1'
 
-@app.route('/magnets', methods=['GET', 'POST'])
-def magnets():
-    if request.method == 'POST':
-        name     = request.form.get('name', '').strip()
-        phone    = request.form.get('phone', '').strip()
-        notes    = request.form.get('notes', '')
-        qty      = int(request.form.get('quantity', 10))
-        price    = MAGNET_PRICES.get(qty, 5.000)
+    if not name or not phone:
+        flash('Please enter your name and phone number.', 'error')
+        return redirect(url_for('product_detail', product_id=product_id))
 
-        if not name or not phone:
-            flash('Please fill your name and phone number.', 'error')
-            return redirect(url_for('magnets'))
+    qty_num = 0
+    try:    qty_num = int(''.join(filter(str.isdigit, qty_label)))
+    except: pass
 
-        # Upload each customer image to Cloudinary
+    price = product.price * (1 - product.discount_percent / 100)
+
+    uploaded_urls = []
+    if not upload_later:
         files = request.files.getlist('photos')
-        uploaded_urls = []
         for f in files:
             if f and f.filename and allowed_file(f.filename):
-                url = upload_to_cloudinary(f, folder='jujita/magnets')
+                url = upload_to_cloudinary(f, folder='jujita/photo_orders')
                 if url:
                     uploaded_urls.append(url)
 
-        if not uploaded_urls:
-            flash('Please upload at least one photo.', 'error')
-            return redirect(url_for('magnets'))
+    order = MagnetOrder(
+        order_ref      = 'PH-' + str(uuid.uuid4())[:8].upper(),
+        customer_name  = name,
+        customer_phone = phone,
+        customer_notes = f"Product: {product.name} | Option: {qty_label}\n{notes}",
+        quantity       = qty_num or 1,
+        price_bd       = price,
+        images_json    = json.dumps(uploaded_urls),
+        upload_later   = upload_later,
+    )
+    db.session.add(order)
+    db.session.commit()
 
-        order = MagnetOrder(
-            order_ref      = 'MG-' + str(uuid.uuid4())[:8].upper(),
-            customer_name  = name,
-            customer_phone = phone,
-            customer_notes = notes,
-            quantity       = qty,
-            price_bd       = price,
-            images_json    = json.dumps(uploaded_urls),
-        )
-        db.session.add(order)
-        db.session.commit()
-
-        flash(f'✅ Order received! We will contact you soon on {phone}.', 'success')
-        return redirect(url_for('magnets_confirm', ref=order.order_ref))
-
-    return render_template('magnets.html', prices=MAGNET_PRICES)
+    flash(f'✅ Order received! We will contact you on {phone}.', 'success')
+    return redirect(url_for('photo_order_confirm', ref=order.order_ref))
 
 
-@app.route('/magnets/confirm/<ref>')
-def magnets_confirm(ref):
+@app.route('/photo-order/confirm/<ref>')
+def photo_order_confirm(ref):
     order = MagnetOrder.query.filter_by(order_ref=ref).first_or_404()
-    return render_template('magnets_confirm.html', order=order)
+    return render_template('photo_order_confirm.html', order=order)
+
+
+# ══════════════════════════════════════════════════════════════════════
+#  Admin — Photo/Magnet Orders
+# ══════════════════════════════════════════════════════════════════════
+@app.route('/admin/photo-orders')
+@admin_required
+def admin_photo_orders():
+    orders = MagnetOrder.query.order_by(MagnetOrder.created_at.desc()).all()
+    return render_template('admin/photo_orders.html', orders=orders)
+
+
+@app.route('/admin/photo-orders/<int:order_id>/status', methods=['POST'])
+@admin_required
+def admin_photo_order_status(order_id):
+    order = MagnetOrder.query.get_or_404(order_id)
+    order.status = request.form.get('status', 'pending')
+    db.session.commit()
+    flash('Status updated!', 'success')
+    return redirect(url_for('admin_photo_orders'))
 
 
 # ══════════════════════════════════════════════════════════════════════
@@ -651,26 +709,6 @@ def scoop():
     return render_template('scoop.html')
  
  
-# ══════════════════════════════════════════════════════════════════════
-#  Admin — Magnet Orders
-# ══════════════════════════════════════════════════════════════════════
-@app.route('/admin/magnets')
-@admin_required
-def admin_magnets():
-    orders = MagnetOrder.query.order_by(MagnetOrder.created_at.desc()).all()
-    return render_template('admin/magnets.html', orders=orders)
-
-
-@app.route('/admin/magnets/<int:order_id>/status', methods=['POST'])
-@admin_required
-def admin_magnet_status(order_id):
-    order = MagnetOrder.query.get_or_404(order_id)
-    order.status = request.form.get('status', 'pending')
-    db.session.commit()
-    flash('Status updated!', 'success')
-    return redirect(url_for('admin_magnets'))
-
-
 # ══════════════════════════════════════════════════════════════════════
 #  Admin — Login / Logout
 # ══════════════════════════════════════════════════════════════════════
@@ -827,7 +865,7 @@ def admin_toggle_hide(product_id):
 def admin_upload_images(product_id):
     """Upload additional gallery images for a product."""
     product = Product.query.get_or_404(product_id)
-    files   = request.files.getlist('gallery_images')
+    files   = request.files.getlist('images')
     uploaded = 0
     for file in files:
         if file and file.filename and allowed_file(file.filename):
@@ -849,7 +887,7 @@ def admin_upload_images(product_id):
 
 @app.route('/admin/products/images/delete/<int:image_id>', methods=['POST'])
 @admin_required
-def admin_delete_image(image_id):
+def admin_delete_product_image(image_id):
     """Delete a gallery image."""
     img = ProductImage.query.get_or_404(image_id)
     product_id = img.product_id
@@ -970,16 +1008,22 @@ def show_products():
 # ══════════════════════════════════════════════════════════════════════
 def add_missing_columns():
     """Add any new columns to existing DB tables — safe to run multiple times."""
+    migrations = [
+        'ALTER TABLE products ADD COLUMN IF NOT EXISTS is_hidden BOOLEAN DEFAULT FALSE',
+        'ALTER TABLE magnet_orders ADD COLUMN IF NOT EXISTS upload_later BOOLEAN DEFAULT FALSE',
+    ]
     try:
         with db.engine.connect() as conn:
-            conn.execute(db.text(
-                'ALTER TABLE products ADD COLUMN IF NOT EXISTS is_hidden BOOLEAN DEFAULT FALSE'
-            ))
+            for sql in migrations:
+                try:
+                    conn.execute(db.text(sql))
+                except Exception:
+                    pass
             conn.commit()
     except Exception as e:
         print(f"[Migration] Note: {e}")
 
-    # product_images & magnet_orders tables are created by db.create_all() above
+    # product_images table is created by db.create_all() above — no ALTER needed
 
 
 # ── Run migrations + seed on every startup (Gunicorn & local) ────────
