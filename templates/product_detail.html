@@ -57,19 +57,26 @@
         {% else %}{% set _ = imgs.append(url_for("static", filename="images/default_product.png")) %}{% endif %}
         {% for gi in product_images %}{% set _ = imgs.append(gi.url) %}{% endfor %}
 
-        <div class="gallery-main" id="gal-main">
-            <img id="gal-img" src="{{ imgs[0] }}" alt="{{ product.name }}"
-                 onerror="this.src='https://placehold.co/600x600/FAF7F2/C9868A?text=🎁'">
-            {% if imgs|length > 1 %}
-           <button type="button" class="gallery-arrow left" onclick="galMove(-1)">&#8249;</button>
-           <button type="button" class="gallery-arrow right" onclick="galMove(1)">&#8250;</button>
-            <div class="gallery-dots" id="gal-dots">
-                {% for i in range(imgs|length) %}
-                <button class="g-dot {{ 'active' if loop.first }}" onclick="galGo({{ loop.index0 }})"></button>
-                {% endfor %}
-            </div>
-            {% endif %}
-        </div>
+    <div class="gallery-main" id="gal-main">
+    <img id="gal-img" src="{{ imgs[0] }}" alt="{{ product.name }}"
+         onerror="this.src='https://placehold.co/600x600/FAF7F2/C9868A?text=🎁'">
+
+    {% if imgs|length > 1 %}
+    <!-- arrows -->
+    <button type="button" class="gallery-arrow left" onclick="galMove(-1)">&#8249;</button>
+    <button type="button" class="gallery-arrow right" onclick="galMove(1)">&#8250;</button>
+
+    <!-- dots -->
+    <div class="gallery-dots" id="gal-dots">
+        {% for i in range(imgs|length) %}
+        <button type="button"
+                class="g-dot {{ 'active' if loop.first }}"
+                onclick="galGo({{ loop.index0 }})">
+        </button>
+        {% endfor %}
+    </div>
+    {% endif %}
+</div>
 
         {% if imgs|length > 1 %}
         <div class="thumb-strip" id="thumb-strip">
