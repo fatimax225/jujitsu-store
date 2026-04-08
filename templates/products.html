@@ -1,5 +1,32 @@
 {% extends "base.html" %}
-{% block title %}{{ 'تسوّق' if lang == 'ar' else 'Shop' }} | Jujita Shop{% endblock %}
+{% block title %}{{ 'تسوّق' if lang == 'ar' else 'Shop' }} | Jujita Shop
+<script>
+const _timers = new WeakMap();
+function startSlide(card) {
+    const imgs = card.dataset.images.split('||');
+    const img  = card.querySelector('.product-card-img');
+    const dots = card.querySelectorAll('.img-dot');
+    if (imgs.length < 2) return;
+    let idx = 0;
+    const t = setInterval(() => {
+        idx = (idx + 1) % imgs.length;
+        img.style.opacity = '0';
+        setTimeout(() => { img.src = imgs[idx]; img.style.opacity = '1'; }, 120);
+        dots.forEach((d, i) => d.style.background = i === idx ? '#fff' : 'rgba(255,255,255,0.5)');
+    }, 900);
+    _timers.set(card, t);
+}
+function stopSlide(card) {
+    clearInterval(_timers.get(card));
+    _timers.delete(card);
+    const imgs = card.dataset.images ? card.dataset.images.split('||') : [];
+    const img  = card.querySelector('.product-card-img');
+    const dots = card.querySelectorAll('.img-dot');
+    if (imgs[0]) { img.style.opacity='0'; setTimeout(()=>{img.src=imgs[0];img.style.opacity='1';},120); }
+    dots.forEach((d,i) => d.style.background = i===0 ? '#fff' : 'rgba(255,255,255,0.5)');
+}
+</script>
+{% endblock %}
 {% block content %}
 
 <div class="category-bar">
@@ -14,7 +41,6 @@
             {% elif cat.category == 'eid' %}🌙
             {% elif cat.category == 'ramadan' %}✨
             {% elif cat.category == 'baby' %}👶
-            {% elif cat.category == 'magnets' %}🧲
             {% else %}🎁{% endif %}
             {{ cat.category|capitalize }}
         </a>
@@ -42,33 +68,26 @@
     <div class="product-grid">
         {% for product in products %}
         {% set price = product.price * (1 - product.discount_percent / 100) %}
-
-        {# Collect all images for this product #}
-        {% set all_imgs = [] %}
-        {% if product.image and not product.image.startswith('default') %}
-            {% if product.image.startswith('http') %}
-                {% set _ = all_imgs.append(product.image) %}
-            {% else %}
-                {% set _ = all_imgs.append(url_for('static', filename='images/uploads/' + product.image)) %}
+        <div class="product-card">
+            {% set all_imgs = [] %}
+            {% if product.image and not product.image.startswith('default') %}
+                {% if product.image.startswith('http') %}{% set _ = all_imgs.append(product.image) %}
+                {% else %}{% set _ = all_imgs.append(url_for('static', filename='images/uploads/' + product.image)) %}{% endif %}
             {% endif %}
-        {% endif %}
-        {% for gi in product.images %}
-            {% set _ = all_imgs.append(gi.url) %}
-        {% endfor %}
-        {% if all_imgs|length == 0 %}
-            {% set _ = all_imgs.append(url_for('static', filename='images/default_product.png')) %}
-        {% endif %}
+            {% for gi in product.images %}{% set _ = all_imgs.append(gi.url) %}{% endfor %}
+            {% if all_imgs|length == 0 %}{% set _ = all_imgs.append(url_for('static', filename='images/default_product.png')) %}{% endif %}
 
-        <div class="product-card"
-             {% if all_imgs|length > 1 %}
-             data-images="{{ all_imgs | join('||') }}"
-             onmouseenter="startSlide(this)"
-             onmouseleave="stopSlide(this)"
-             {% endif %}>
-            <div class="product-img-wrapper">
+            <div class="product-img-wrapper"
+                 {% if all_imgs|length > 1 %}
+                 data-images="{{ all_imgs | join('||') }}"
+                 onmouseenter="startSlide(this)"
+                 onmouseleave="stopSlide(this)"
+                 {% endif %}>
+
                 <img src="{{ all_imgs[0] }}"
                      alt="{{ product.name }}"
                      class="product-card-img"
+                     style="transition:opacity 0.15s ease;"
                      onerror="this.src='https://placehold.co/400x400/FAF7F2/C9868A?text=🎁'">
 
                 {% if product.discount_percent > 0 %}
@@ -76,13 +95,18 @@
                 {% endif %}
 
                 {% if all_imgs|length > 1 %}
-                <div style="position:absolute;bottom:8px;left:50%;transform:translateX(-50%);
-                            display:flex;gap:5px;" class="img-dots">
-                    {% for i in range(all_imgs|length) %}
-                    <span style="width:6px;height:6px;border-radius:50%;background:{% if loop.first %}#fff{% else %}rgba(255,255,255,0.5){% endif %};
-                                 transition:background 0.3s;" class="img-dot"></span>
+                <div style="position:absolute;bottom:8px;left:50%;transform:translateX(-50%);display:flex;gap:5px;" class="img-dots">
+                    {% for i in range([all_imgs|length, 5]|min) %}
+                    <span style="width:5px;height:5px;border-radius:50%;background:{% if loop.first %}#fff{% else %}rgba(255,255,255,0.5){% endif %};transition:background 0.3s;" class="img-dot"></span>
                     {% endfor %}
                 </div>
+                {% endif %}
+
+                {% if product.category in ['magnets', 'photo_print', 'photo print'] %}
+                <span style="position:absolute;top:10px;left:10px;background:var(--burgundy);
+                             color:#fff;font-size:10px;font-weight:700;padding:3px 8px;border-radius:20px;">
+                    🧲 {{ 'مخصص' if lang == 'ar' else 'Custom' }}
+                </span>
                 {% endif %}
 
                 <div class="product-actions-overlay">
@@ -91,13 +115,16 @@
                        style="background:rgba(255,255,255,0.9);color:var(--burgundy);">
                         {{ 'تفاصيل' if lang == 'ar' else 'Details' }}
                     </a>
+                    {% if product.category not in ['magnets', 'photo_print', 'photo print'] %}
                     <form action="{{ url_for('add_to_cart') }}" method="POST" style="flex:1;display:flex;">
                         <input type="hidden" name="product_id" value="{{ product.id }}">
                         <input type="hidden" name="quantity" value="1">
-                        <button type="submit" class="btn btn-primary" style="flex:1;padding:8px 10px;font-size:11px;">
+                        <button type="submit" class="btn btn-primary" style="flex:1;padding:8px 10px;font-size:11px;"
+                                {{ 'disabled title=Out of Stock' if product.stock == 0 }}>
                             <i class="fas fa-shopping-bag"></i>
                         </button>
                     </form>
+                    {% endif %}
                 </div>
             </div>
             <div class="product-info">
@@ -133,54 +160,4 @@
     </div>
     {% endif %}
 </div>
-
-<script>
-// ── Auto-slide on hover ──────────────────────────────────────────────
-const slideTimers = new WeakMap();
-
-function startSlide(card) {
-    const imgs   = card.dataset.images.split('||');
-    const imgEl  = card.querySelector('.product-card-img');
-    const dots   = card.querySelectorAll('.img-dot');
-    if (imgs.length < 2) return;
-
-    let idx = 0;
-    const next = () => {
-        idx = (idx + 1) % imgs.length;
-        imgEl.style.opacity = '0';
-        setTimeout(() => {
-            imgEl.src = imgs[idx];
-            imgEl.style.opacity = '1';
-        }, 150);
-        dots.forEach((d, i) => {
-            d.style.background = i === idx ? '#fff' : 'rgba(255,255,255,0.5)';
-        });
-    };
-    const timer = setInterval(next, 900);
-    slideTimers.set(card, timer);
-}
-
-function stopSlide(card) {
-    clearInterval(slideTimers.get(card));
-    slideTimers.delete(card);
-    // Reset to first image
-    const imgs  = card.dataset.images.split('||');
-    const imgEl = card.querySelector('.product-card-img');
-    const dots  = card.querySelectorAll('.img-dot');
-    imgEl.style.opacity = '0';
-    setTimeout(() => {
-        imgEl.src = imgs[0];
-        imgEl.style.opacity = '1';
-    }, 150);
-    dots.forEach((d, i) => {
-        d.style.background = i === 0 ? '#fff' : 'rgba(255,255,255,0.5)';
-    });
-}
-
-// Smooth transition for all product images
-document.querySelectorAll('.product-card-img').forEach(img => {
-    img.style.transition = 'opacity 0.15s ease';
-});
-</script>
-
 {% endblock %}
