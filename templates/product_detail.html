@@ -61,8 +61,8 @@
             <img id="gal-img" src="{{ imgs[0] }}" alt="{{ product.name }}"
                  onerror="this.src='https://placehold.co/600x600/FAF7F2/C9868A?text=🎁'">
             {% if imgs|length > 1 %}
-            <button class="gallery-arrow left"  onclick="galMove(-1)">&#8249;</button>
-            <button class="gallery-arrow right" onclick="galMove(1)">&#8250;</button>
+           <button type="button" class="gallery-arrow left" onclick="galMove(-1)">&#8249;</button>
+           <button type="button" class="gallery-arrow right" onclick="galMove(1)">&#8250;</button>
             <div class="gallery-dots" id="gal-dots">
                 {% for i in range(imgs|length) %}
                 <button class="g-dot {{ 'active' if loop.first }}" onclick="galGo({{ loop.index0 }})"></button>
