@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% block title %}{{ product.name }} | Jujita Shop{% endblock %}
- 
+
 {% block extra_css %}
 <style>
 /* ── Gallery ── */
@@ -27,7 +27,7 @@
 .thumb-strip{display:flex;gap:8px;margin-top:10px;overflow-x:auto;padding-bottom:4px;}
 .thumb-strip img{width:68px;height:68px;object-fit:cover;border-radius:8px;cursor:pointer;flex-shrink:0;border:2.5px solid var(--border);opacity:0.65;transition:all 0.2s;}
 .thumb-strip img.active,.thumb-strip img:hover{border-color:var(--burgundy);opacity:1;}
- 
+
 /* ── Photo order slots ── */
 .photo-slots{display:grid;grid-template-columns:repeat(auto-fill,minmax(90px,1fr));gap:10px;margin:12px 0;}
 .photo-slot{aspect-ratio:1;border:2px dashed var(--border);border-radius:10px;cursor:pointer;
@@ -44,10 +44,10 @@
 .photo-slot:hover .slot-rm{display:flex;}
 </style>
 {% endblock %}
- 
+
 {% block content %}
 <div class="product-detail-section">
- 
+
     <!-- ══ Gallery ══ -->
     <div class="product-gallery">
         {% set imgs = [] %}
@@ -56,7 +56,7 @@
             {% else %}{% set _ = imgs.append(url_for("static", filename="images/uploads/" + product.image)) %}{% endif %}
         {% else %}{% set _ = imgs.append(url_for("static", filename="images/default_product.png")) %}{% endif %}
         {% for gi in product_images %}{% set _ = imgs.append(gi.url) %}{% endfor %}
- 
+
         <div class="gallery-main" id="gal-main">
             <img id="gal-img" src="{{ imgs[0] }}" alt="{{ product.name }}"
                  onerror="this.src='https://placehold.co/600x600/FAF7F2/C9868A?text=🎁'">
@@ -70,7 +70,7 @@
             </div>
             {% endif %}
         </div>
- 
+
         {% if imgs|length > 1 %}
         <div class="thumb-strip" id="thumb-strip">
             {% for src in imgs %}
@@ -80,7 +80,7 @@
             {% endfor %}
         </div>
         {% endif %}
- 
+
         <script>
         const IMGS = {{ imgs|tojson }};
         let CUR = 0;
@@ -110,7 +110,7 @@
         },{passive:true});
         </script>
     </div>
- 
+
     <!-- ══ Info ══ -->
     <div class="product-detail-info">
         <div class="breadcrumb">
@@ -118,10 +118,10 @@
             <span>/</span><a href="{{ url_for('products') }}">{{ 'المنتجات' if lang == 'ar' else 'Products' }}</a>
             <span>/</span><span style="color:var(--charcoal);">{{ product.name_ar if lang=='ar' and product.name_ar else product.name }}</span>
         </div>
- 
+
         <div class="product-detail-category">{{ product.category }}</div>
         <h1 class="product-detail-name">{{ product.name_ar if lang=='ar' and product.name_ar else product.name }}</h1>
- 
+
         <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;">
             <div style="color:var(--gold);font-size:16px;">
                 {% set rating = avg_rating or 4.8 %}
@@ -131,7 +131,7 @@
             </div>
             <span style="font-size:13px;color:var(--mid-gray);">({{ reviews|length }} {{ 'تقييم' if lang=='ar' else 'reviews' }})</span>
         </div>
- 
+
         {% set price = product.price * (1 - product.discount_percent / 100) %}
         <div style="display:flex;align-items:baseline;gap:14px;margin-bottom:8px;">
             <div class="product-detail-price" id="display-price">{{ "%.3f"|format(price) }} BD</div>
@@ -141,16 +141,16 @@
             {% endif %}
         </div>
         <div style="font-size:12px;color:var(--mid-gray);margin-bottom:24px;">{{ 'شامل ضريبة القيمة المضافة' if lang=='ar' else 'VAT included' }}</div>
- 
+
         <p class="product-detail-desc">{{ product.description_ar if lang=='ar' and product.description_ar else product.description }}</p>
- 
+
         <!-- ══════════════════════════════════════════════
              PHOTO PRINT / MAGNET CATEGORY
         ══════════════════════════════════════════════ -->
         {% if product.category in ['magnets', 'photo_print', 'photo print'] %}
- 
+
         <form action="{{ url_for('photo_order', product_id=product.id) }}" method="POST" enctype="multipart/form-data" id="photo-form">
- 
+
             <!-- Step 1: Quantity -->
             {% if options %}
             <div style="margin-bottom:20px;">
@@ -166,7 +166,7 @@
                 <input type="hidden" name="quantity_label" id="qty-label-input" value="{{ options[0] if options else '' }}">
             </div>
             {% endif %}
- 
+
             <!-- Step 2: Photo upload slots OR upload later -->
             <div style="margin-bottom:20px;">
                 <div class="option-label" style="display:flex;justify-content:space-between;align-items:center;">
@@ -182,11 +182,11 @@
                         {{ 'أرفع لاحقاً' if lang=='ar' else 'Upload later via WhatsApp' }}
                     </label>
                 </div>
- 
+
                 <!-- Photo slots grid -->
                 <div class="photo-slots" id="photo-slots"></div>
                 <input type="file" id="slot-file-input" accept="image/*" style="display:none;" onchange="handleSlotFile(this)">
- 
+
                 <!-- Upload later notice -->
                 <div id="upload-later-notice" style="display:none;background:#fff8e1;border:1px solid #ffe082;border-radius:8px;padding:14px;font-size:13px;color:#795548;margin-top:8px;">
                     <i class="fas fa-whatsapp" style="color:#25D366;margin-right:6px;"></i>
@@ -194,7 +194,7 @@
                 </div>
                 <input type="hidden" name="upload_later" id="upload-later-val" value="0">
             </div>
- 
+
             <!-- Step 3: Contact -->
             <div style="margin-bottom:20px;">
                 <div class="option-label">{{ 'بياناتك' if lang=='ar' else 'Your Details' }}</div>
@@ -208,7 +208,7 @@
                 <textarea name="notes" class="form-control" rows="2" style="margin-top:8px;"
                           placeholder="{{ 'ملاحظات...' if lang=='ar' else 'Notes...' }}"></textarea>
             </div>
- 
+
             <!-- Submit -->
             <button type="submit" id="photo-submit-btn" class="btn-add-cart"
                     style="width:100%;background:linear-gradient(135deg,var(--burgundy),#4A1525);">
@@ -219,7 +219,7 @@
                 {{ 'الدفع عبر BenefitPay: 34415700 بعد التأكيد' if lang=='ar' else 'Payment via BenefitPay: 34415700 after confirmation' }}
             </p>
         </form>
- 
+
         <script>
         // ── Photo order JS ─────────────────────────────────────────
         const BASE_PRICE_PH = {{ "%.3f"|format(price) }};
@@ -228,9 +228,9 @@
         let phQtyNum   = parseQtyNum(phQtyLabel);
         let phFiles    = {};   // {slotIndex: File}
         let activeSlot = null;
- 
+
         function parseQtyNum(s) { return parseInt((s+"").replace(/[^\d]/g,"")) || 0; }
- 
+
         function selectPhotoQty(btn, val) {
             phQtyLabel = val;
             phQtyNum   = parseQtyNum(val);
@@ -241,7 +241,7 @@
             phFiles = {};
             buildSlots();
         }
- 
+
         function buildSlots() {
             const grid = document.getElementById("photo-slots");
             grid.innerHTML = "";
@@ -251,12 +251,12 @@
                 slot.className = "photo-slot";
                 slot.dataset.idx = i;
                 slot.onclick = () => openSlot(i);
- 
+
                 const num = document.createElement("div");
                 num.className = "slot-num";
                 num.textContent = i+1;
                 slot.appendChild(num);
- 
+
                 if (phFiles[i]) {
                     const img = document.createElement("img");
                     const reader = new FileReader();
@@ -281,21 +281,21 @@
             syncFilesInput();
             updateCounter();
         }
- 
+
         function openSlot(idx) {
             activeSlot = idx;
             const inp = document.getElementById("slot-file-input");
             inp.value = "";
             inp.click();
         }
- 
+
         function handleSlotFile(inp) {
             if (!inp.files[0] || activeSlot === null) return;
             phFiles[activeSlot] = inp.files[0];
             activeSlot = null;
             buildSlots();
         }
- 
+
         function syncFilesInput() {
             // Remove old injected inputs
             document.querySelectorAll(".ph-file-hidden").forEach(e=>e.remove());
@@ -311,7 +311,7 @@
                 form.appendChild(inp);
             });
         }
- 
+
         function updateCounter() {
             const n   = Object.keys(phFiles).length;
             const max = phQtyNum || 1;
@@ -324,7 +324,7 @@
             btn.style.cursor   = ready ? "pointer" : "not-allowed";
             btn.disabled       = !ready;
         }
- 
+
         function toggleUploadLater(chk) {
             const notice = document.getElementById("upload-later-notice");
             const slots  = document.getElementById("photo-slots");
@@ -334,18 +334,18 @@
             document.getElementById("upload-later-val").value = chk.checked ? "1" : "0";
             updateCounter();
         }
- 
+
         // Init
         buildSlots();
         updateCounter();
         </script>
- 
+
         {% else %}
         <!-- ══ Normal products ══ -->
         <form action="{{ url_for('add_to_cart') }}" method="POST" class="add-to-cart-form">
             <input type="hidden" name="product_id" value="{{ product.id }}">
             <input type="hidden" name="option" id="selected-option" value="{{ options[0] if options else '' }}">
- 
+
             {% if options %}
             <div>
                 <div class="option-label">{{ 'اختر الخيار' if lang=='ar' else 'Select Option' }}</div>
@@ -356,7 +356,7 @@
                 </div>
             </div>
             {% endif %}
- 
+
             <div>
                 <div class="option-label" style="display:flex;justify-content:space-between;">
                     <span>{{ 'الكمية' if lang=='ar' else 'Quantity' }}</span>
@@ -376,7 +376,7 @@
                     <button type="button" class="qty-btn" onclick="changeQty(1)" {{ 'disabled' if product.stock==0 }}>+</button>
                 </div>
             </div>
- 
+
             {% if product.stock > 0 %}
             <button type="submit" class="btn-add-cart">
                 <i class="fas fa-shopping-bag"></i>
@@ -388,13 +388,13 @@
                 {{ 'نفذ المخزون' if lang=='ar' else 'Out of Stock' }}
             </button>
             {% endif %}
- 
+
             <a href="{{ url_for('cart') }}" class="btn btn-outline" style="text-align:center;">
                 {{ 'عرض السلة' if lang=='ar' else 'View Cart' }}
             </a>
         </form>
         {% endif %}
- 
+
         <!-- Trust badges -->
         <div style="display:flex;gap:20px;margin-top:28px;padding-top:24px;border-top:1px solid var(--border);">
             <div style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--mid-gray);">
@@ -408,7 +408,7 @@
         </div>
     </div>
 </div>
- 
+
 <!-- Related -->
 {% if related %}
 <div style="background:var(--light-gray);padding:60px 0;">
@@ -446,7 +446,7 @@
     </div>
 </div>
 {% endif %}
- 
+
 <!-- Reviews -->
 <div class="reviews-section" style="margin-top:60px;">
     <div class="section-heading" style="text-align:left;">
@@ -476,7 +476,7 @@
     {% else %}
     <p style="color:var(--mid-gray);">{{ 'لا توجد تقييمات بعد.' if lang=='ar' else 'No reviews yet.' }}</p>
     {% endif %}
- 
+
     {% if session.get('user_id') %}
     <div class="review-form" style="margin-top:40px;">
         <h3 style="font-family:var(--font-display);font-size:22px;color:var(--burgundy);margin-bottom:20px;">
