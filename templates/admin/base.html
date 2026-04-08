@@ -39,9 +39,6 @@
         <a href="{{ url_for('admin_offers') }}" class="{{ 'active' if 'offer' in request.endpoint }}">
             <i class="fas fa-tag"></i> Offers
         </a>
-        <a href="{{ url_for('admin_photo_orders') }}" class="{{ 'active' if 'photo_order' in request.endpoint }}">
-            <i class="fas fa-camera"></i> Photo Orders
-        </a>
     </div>
 
     <div class="admin-content">
@@ -63,4 +60,3 @@
 <script src="{{ url_for('static', filename='js/main.js') }}"></script>
 </body>
 </html>
-
