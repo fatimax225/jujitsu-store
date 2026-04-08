@@ -13,7 +13,7 @@
                 font-size:14px;font-weight:600;color:var(--burgundy);margin-bottom:28px;">
         {{ 'رقم الطلب:' if lang == 'ar' else 'Order #' }} {{ order.order_ref }}
     </div>
-
+ 
     <div class="payment-box" style="text-align:left;">
         <h3 style="font-family:var(--font-display);font-size:22px;color:var(--gold-light);margin-bottom:18px;">
             <i class="fas fa-credit-card" style="margin-right:10px;"></i>
@@ -41,7 +41,7 @@
             </div>
         </div>
     </div>
-
+ 
     {% if order.upload_later %}
     <div style="background:#e8f5e9;border:1px solid #c8e6c9;border-radius:10px;padding:20px;margin:20px 0;text-align:left;">
         <div style="font-weight:700;color:#2e7d32;margin-bottom:8px;">
@@ -66,7 +66,7 @@
     </div>
     {% endif %}
     {% endif %}
-
+ 
     <div style="display:flex;gap:16px;justify-content:center;flex-wrap:wrap;margin-top:24px;">
         <a href="{{ url_for('products') }}" class="btn btn-primary">
             {{ 'تسوق أكثر' if lang == 'ar' else 'Continue Shopping' }}
